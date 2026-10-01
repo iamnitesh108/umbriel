@@ -255,6 +255,7 @@ namespace umbriel {
     m_initialRulesContentType = m_contentType;
     m_namedScrollingColumnName = rule.defaultScrollingColumn;
     m_namedScrollingColumnOrder = rule.defaultScrollingColumnOrder;
+    m_ruleColumnDisplay = rule.defaultColumnDisplay;
     const bool launchRuleOverride = m_launchPlacementPending
         && (rule.defaultOutput.has_value() || rule.defaultWorkspace.has_value() || rule.defaultScratchpad.has_value());
     if (rule.defaultFloating) {

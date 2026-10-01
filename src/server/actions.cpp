@@ -789,6 +789,63 @@ namespace umbriel {
       return actionOutputFocus<WlrDir>(server, bind, error);
     }
 
+    // Tab or untab the focused column; nullopt toggles. A layout whose columns cannot be tabbed refuses.
+    bool setFocusedColumnTabbed(Server& server, std::optional<bool> tabbed, std::string* error) {
+      Workspace* workspace = windowActionWorkspace(server);
+      if (workspace == nullptr) {
+        return true;
+      }
+      if (workspace->layout().tabbedContainers() == nullptr) {
+        return reject(error, "tabs need a layout with columns: scrolling or master");
+      }
+      workspace->setFocusedColumnTabbed(tabbed);
+      return true;
+    }
+
+    bool actionColumnToggleTabbed(Server& server, const Keybind& /*bind*/, std::string* error) {
+      return setFocusedColumnTabbed(server, std::nullopt, error);
+    }
+
+    bool actionColumnSetDisplay(Server& server, const Keybind& bind, std::string* error) {
+      const auto* arg = payloadIf<ColumnDisplayArg>(bind);
+      if (arg == nullptr) {
+        return true;
+      }
+      return setFocusedColumnTabbed(server, arg->display == ColumnDisplay::Tabbed, error);
+    }
+
+    template <int Direction>
+    bool actionColumnFocusTabStep(Server& server, const Keybind& /*bind*/, std::string* /*error*/) {
+      if (Workspace* workspace = windowActionWorkspace(server)) {
+        focusWindowFromNavigation(server, workspace->tabs().stepTarget(Direction));
+      }
+      return true;
+    }
+
+    bool actionColumnFocusTab(Server& server, const Keybind& bind, std::string* /*error*/) {
+      const auto* arg = payloadIf<TabIndexArg>(bind);
+      Workspace* workspace = windowActionWorkspace(server);
+      if (arg != nullptr && workspace != nullptr) {
+        focusWindowFromNavigation(server, workspace->tabs().indexTarget(arg->index));
+      }
+      return true;
+    }
+
+    template <int Direction> bool actionColumnMoveTab(Server& server, const Keybind& /*bind*/, std::string* /*error*/) {
+      if (Workspace* workspace = windowActionWorkspace(server)) {
+        workspace->moveFocusedTab(Direction);
+      }
+      return true;
+    }
+
+    // Draw (1) or hide (0) the focused tab group's bar, or toggle it (-1).
+    template <int Shown> bool actionColumnTabBar(Server& server, const Keybind& /*bind*/, std::string* /*error*/) {
+      if (Workspace* workspace = windowActionWorkspace(server)) {
+        workspace->setFocusedTabBar(Shown < 0 ? std::nullopt : std::optional<bool>(Shown > 0));
+      }
+      return true;
+    }
+
     template <int Direction> bool actionFocusVertical(Server& server, const Keybind& /*bind*/, std::string* /*error*/) {
       if (Workspace* workspace = windowActionWorkspace(server)) {
         if (View* target = workspace->focusVertical(Direction)) {
@@ -2085,6 +2142,16 @@ namespace umbriel {
         &actionEffect<EffectKind::Cursor, EffectSlotAction::Cycle>,
         &actionEffect<EffectKind::Cursor, EffectSlotAction::Toggle>,
         &actionEffect<EffectKind::Cursor, EffectSlotAction::Reset>,
+        &actionColumnToggleTabbed,
+        &actionColumnSetDisplay,
+        &actionColumnFocusTabStep<1>,
+        &actionColumnFocusTabStep<-1>,
+        &actionColumnFocusTab,
+        &actionColumnMoveTab<1>,
+        &actionColumnMoveTab<-1>,
+        &actionColumnTabBar<-1>,
+        &actionColumnTabBar<1>,
+        &actionColumnTabBar<0>,
     };
 
     consteval bool everyActionHasHandler() {
