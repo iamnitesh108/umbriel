@@ -2460,6 +2460,9 @@ namespace umbriel {
           : resolveUnnamedWorkspaceLayout(config(), identity, workspace->index());
       if (workspace->layoutConfig() != layout) {
         workspace->applyLayoutConfig(std::move(layout));
+      } else {
+        // Bar text such as title_format and max_tabs moves no box, so no arrange redraws the bars that show it.
+        workspace->tabs().sync();
       }
     }
   }
