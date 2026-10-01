@@ -140,7 +140,7 @@ namespace umbriel {
       };
       m_hasMaximizeRestoreBox = restoreWidth > 0 && restoreHeight > 0;
 
-      const wlr_box usable = floatingUsableArea();
+      const wlr_box usable = floatingMaximizedBox(floatingUsableArea());
       if (usable.width > 0 && usable.height > 0) {
         configureSize(usable.width, usable.height);
         if (animateFloating) {
@@ -159,6 +159,13 @@ namespace umbriel {
         setPosition(m_maximizeRestoreBox.x, m_maximizeRestoreBox.y);
       }
       m_hasMaximizeRestoreBox = false;
+    } else if (maximized) {
+      // Maximize and maximize-to-edges fill different boxes, so a float switching between them is refit.
+      const wlr_box box = floatingMaximizedBox(floatingUsableArea());
+      if (box.width > 0 && box.height > 0) {
+        configureSize(box.width, box.height);
+        setPosition(box.x, box.y);
+      }
     }
     setMaximizedState(maximized);
     if (!sizeAnimating()) {

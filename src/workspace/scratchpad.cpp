@@ -930,7 +930,7 @@ namespace umbriel {
         && scratchpad != nullptr
         && scratchpad->output != nullptr
         && (view->maximizedToEdges() || view->m_floatingMaximized)) {
-      const wlr_box area = usableArea(*m_server, scratchpad->output);
+      const wlr_box area = view->floatingMaximizedBox(usableArea(*m_server, scratchpad->output));
       if (area.width > 0 && area.height > 0) {
         view->cancelPositionAnimation();
         view->setPosition(area.x, area.y);

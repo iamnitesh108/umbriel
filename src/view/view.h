@@ -312,6 +312,8 @@ namespace umbriel {
     [[nodiscard]] std::array<int, 2> floatingRestoreSize() const;
     // The home output's usable area.
     [[nodiscard]] wlr_box floatingUsableArea() const;
+    // `usable` less the margin a maximized tile keeps (struts, then gap and border), so the border stays on screen.
+    [[nodiscard]] wlr_box floatingMaximizedBox(const wlr_box& usable) const;
     // The usable area an opening window is sized against: the target output's,
     // then its full layout box, then whatever sits under the cursor. A hotplug
     // race can leave an output with no usable area computed yet.
