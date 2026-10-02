@@ -665,6 +665,25 @@ UMBRIEL_TEST(replacingDefaultTabsAllowsIndependentRowWeights) {
   CHECK(target.layout.targetBox(stub(1)).height < target.layout.targetBox(stub(2)).height);
 }
 
+UMBRIEL_TEST(masterGroupsExportTotalWeightAndKeepUntabbedProportions) {
+  MasterFixture source;
+  source.addViews(3);
+  View* first = source.layout.columns()[1].views[0];
+  View* last = source.layout.columns()[1].views[1];
+  CHECK(source.layout.setHeightFraction(first, 0.25));
+  source.layout.arrange(kUsable);
+  const wlr_box firstBox = source.layout.targetBox(first);
+  const wlr_box lastBox = source.layout.targetBox(last);
+  const double totalWeight = source.layout.columns()[1].heightWeights[0] + source.layout.columns()[1].heightWeights[1];
+  CHECK(source.layout.setTabbed(first, true));
+  CHECK(std::abs(source.layout.columns()[1].heightWeights[0] - totalWeight) < 1e-9);
+  CHECK(std::abs(source.layout.columns()[1].heightWeights[1] - totalWeight) < 1e-9);
+  CHECK(source.layout.setTabbed(first, false));
+  source.layout.arrange(kUsable);
+  CHECK(sameBox(source.layout.targetBox(first), firstBox));
+  CHECK(sameBox(source.layout.targetBox(last), lastBox));
+}
+
 UMBRIEL_TEST(newColumnsTakeTheConfiguredDisplay) {
   ScrollingFixture fixture;
   fixture.config.tabs.defaultDisplay = ColumnDisplay::Tabbed;

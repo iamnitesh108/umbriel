@@ -423,11 +423,14 @@ namespace umbriel {
       }
       Column column;
       column.views = area->views;
-      column.heightWeights = area->weights;
       column.widthFrac = area == &m_master ? masterFrac() : sideFrac;
-      // A tabbed area is one tab group spanning its rows.
       if (area->tabs.tabbed()) {
         column.tabs.form(0, area->views.size(), area->tabs.active(), area->tabs.bar());
+        // Export the group's total extent without changing the rows restored by untabbing.
+        const double weight = std::accumulate(area->weights.begin(), area->weights.end(), 0.0);
+        column.heightWeights.assign(area->views.size(), weight);
+      } else {
+        column.heightWeights = area->weights;
       }
       m_columns.push_back(std::move(column));
     }

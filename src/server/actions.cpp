@@ -308,7 +308,7 @@ namespace umbriel {
           scrolling->toggleFullWidth(targetColumn);
         }
         scrolling->adoptTabs(targetColumn, column.tabs);
-        for (size_t row = 0; row < column.heightWeights.size(); ++row) {
+        for (size_t row = 0; row < column.heightWeights.size(); row = column.tabs.unitEnd(row)) {
           scrolling->setHeightWeight(targetColumn, static_cast<int>(row), column.heightWeights[row]);
         }
         scrolling->setTopGapWeight(targetColumn, column.topGapWeight);
