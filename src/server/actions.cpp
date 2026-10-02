@@ -307,12 +307,12 @@ namespace umbriel {
         if (column.savedWidthFrac > 0.0) {
           scrolling->toggleFullWidth(targetColumn);
         }
+        scrolling->adoptTabs(targetColumn, column.tabs);
         for (size_t row = 0; row < column.heightWeights.size(); ++row) {
           scrolling->setHeightWeight(targetColumn, static_cast<int>(row), column.heightWeights[row]);
         }
         scrolling->setTopGapWeight(targetColumn, column.topGapWeight);
         scrolling->setBottomGapWeight(targetColumn, column.bottomGapWeight);
-        scrolling->adoptTabs(targetColumn, column.tabs);
       } else if (TabbedContainers* tabs = target.layout().tabbedContainers()) {
         const int targetColumn = target.layout().columnOf(first);
         const auto& targetColumns = target.layout().columns();

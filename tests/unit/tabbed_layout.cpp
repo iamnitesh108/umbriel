@@ -647,6 +647,24 @@ UMBRIEL_TEST(rebuiltColumnsReplaceTheDestinationsDefaultTabs) {
   CHECK(target.column().tabs.hidden(2));
 }
 
+UMBRIEL_TEST(replacingDefaultTabsAllowsIndependentRowWeights) {
+  ScrollingFixture target;
+  target.config.tabs.defaultDisplay = ColumnDisplay::Tabbed;
+  target.stack(3);
+  CHECK_EQ(target.column().tabs.groups().front().count, size_t{3});
+  CHECK(target.layout.adoptTabs(0, ColumnTabs{}));
+  CHECK(target.layout.setHeightWeight(0, 0, 1.0));
+  CHECK(target.layout.setHeightWeight(0, 1, 2.0));
+  CHECK(target.layout.setHeightWeight(0, 2, 3.0));
+  const std::vector<double>& weights = target.column().heightWeights;
+  CHECK_EQ(weights[0], 1.0);
+  CHECK_EQ(weights[1], 2.0);
+  CHECK_EQ(weights[2], 3.0);
+  target.layout.arrange(kUsable);
+  CHECK(target.layout.targetBox(stub(0)).height < target.layout.targetBox(stub(1)).height);
+  CHECK(target.layout.targetBox(stub(1)).height < target.layout.targetBox(stub(2)).height);
+}
+
 UMBRIEL_TEST(newColumnsTakeTheConfiguredDisplay) {
   ScrollingFixture fixture;
   fixture.config.tabs.defaultDisplay = ColumnDisplay::Tabbed;
