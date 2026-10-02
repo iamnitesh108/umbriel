@@ -357,7 +357,8 @@ visible area.
 exclusive zones.
 
 `window-toggle-maximize` fills the layout area. Tiled columns keep struts and
-gaps; floating windows fill the output's usable area inside the same margin.
+gaps; floating windows fill the output's usable area inside the same margin, and
+follow it when the gap, borders, struts, or usable area change.
 
 `window-toggle-maximize-to-edges` removes layout struts, gaps, and borders while
 leaving panel exclusive zones visible.

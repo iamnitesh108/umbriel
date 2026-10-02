@@ -314,6 +314,9 @@ namespace umbriel {
     [[nodiscard]] wlr_box floatingUsableArea() const;
     // `usable` less the margin a maximized tile keeps (struts, then gap and border), so the border stays on screen.
     [[nodiscard]] wlr_box floatingMaximizedBox(const wlr_box& usable) const;
+    // Put a maximized float back in the box its settings give it now, after a layout, border, strut, or usable area
+    // change. Does nothing unless that box moved, so every arrange can ask.
+    void refitFloatingMaximized();
     // The usable area an opening window is sized against: the target output's,
     // then its full layout box, then whatever sits under the cursor. A hotplug
     // race can leave an output with no usable area computed yet.
@@ -390,6 +393,8 @@ namespace umbriel {
     friend class Output;
     friend class Server;
     friend class Popup;
+    // Size and place a maximized float in `box`, sliding there when `animate`, and remember it as its maximized box.
+    void placeFloatingMaximized(const wlr_box& box, bool animate);
     friend class Overview;
     friend class Workspace;
 
@@ -890,6 +895,8 @@ namespace umbriel {
     std::vector<std::unique_ptr<ViewSurfaceWatch>> m_viewSurfaceWatches;
     bool m_hasMaximizeRestoreBox = false;
     wlr_box m_maximizeRestoreBox{};
+    // The box a maximized float was last placed in, so a refit acts only when its settings moved it.
+    wlr_box m_floatingMaximizedBox{};
     FloatingGeometry m_floating;
     // Unapplied floating defaults stay in their configured units until the first float transition.
     std::optional<int> m_pendingFloatingWidthPx;
