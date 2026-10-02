@@ -593,12 +593,58 @@ UMBRIEL_TEST(aDropJoinsTheGroupItNames) {
   ScrollingFixture fixture;
   fixture.stack(2);
   fixture.layout.setTabbed(stub(0), true);
-  CHECK(fixture.layout.insertTab(stub(7), 0, 2));
+  CHECK(fixture.layout.insertTab(stub(7), 0, 2, stub(0)));
   CHECK(umbriel::tabGroupOf(fixture.column(), stub(7)) != nullptr);
   // A row at a group's end stands beside it unless the drop asks to join.
   fixture.layout.insertViewIntoColumn(stub(8), 0, 3);
   CHECK(umbriel::tabGroupOf(fixture.column(), stub(8)) == nullptr);
-  CHECK(!fixture.layout.insertTab(stub(9), 0, 5));
+  CHECK(!fixture.layout.insertTab(stub(9), 0, 5, stub(0)));
+}
+
+UMBRIEL_TEST(aDropAtAnAdjacentGroupsStartJoinsThatGroup) {
+  ScrollingFixture fixture;
+  fixture.stack(3);
+  fixture.layout.setTabbed(stub(0), true);
+  CHECK(fixture.layout.moveViewVertical(stub(2), 1));
+  CHECK(fixture.layout.setTabbed(stub(2), true));
+  CHECK(fixture.layout.insertTab(stub(7), 0, 2, stub(2)));
+  const Column& column = fixture.column();
+  CHECK_EQ(column.tabs.groups().front().count, size_t{2});
+  CHECK(umbriel::tabGroupOf(column, stub(7)) == umbriel::tabGroupOf(column, stub(2)));
+  CHECK(umbriel::tabGroupOf(column, stub(7)) != umbriel::tabGroupOf(column, stub(0)));
+}
+
+UMBRIEL_TEST(aDropAtAnAdjacentGroupsEndJoinsThatGroup) {
+  ScrollingFixture fixture;
+  fixture.stack(3);
+  fixture.layout.setTabbed(stub(0), true);
+  CHECK(fixture.layout.moveViewVertical(stub(2), 1));
+  CHECK(fixture.layout.setTabbed(stub(2), true));
+  CHECK(fixture.layout.insertTab(stub(7), 0, 2, stub(0)));
+  const Column& column = fixture.column();
+  CHECK_EQ(column.tabs.groups().back().count, size_t{1});
+  CHECK(umbriel::tabGroupOf(column, stub(7)) == umbriel::tabGroupOf(column, stub(0)));
+  CHECK(umbriel::tabGroupOf(column, stub(7)) != umbriel::tabGroupOf(column, stub(2)));
+}
+
+UMBRIEL_TEST(rebuiltColumnsReplaceTheDestinationsDefaultTabs) {
+  ScrollingFixture source;
+  source.stack(3);
+  source.layout.setTabbed(stub(0), true);
+  source.layout.selectTab(stub(1));
+  source.layout.setTabBar(stub(0), false);
+  ScrollingFixture target;
+  target.config.tabs.defaultDisplay = ColumnDisplay::Tabbed;
+  target.layout.insertView(stub(0), 0);
+  target.layout.insertViewIntoColumn(stub(1), 0, 1);
+  target.layout.insertViewIntoColumn(stub(2), 0, 2);
+  CHECK(target.layout.adoptTabs(0, source.column().tabs));
+  CHECK_EQ(shownTab(target.column()), stub(1));
+  CHECK_EQ(target.column().tabs.groups().front().count, size_t{3});
+  CHECK(target.column().tabs.groups().front().bar == std::optional<bool>(false));
+  CHECK(target.column().tabs.hidden(0));
+  CHECK(!target.column().tabs.hidden(1));
+  CHECK(target.column().tabs.hidden(2));
 }
 
 UMBRIEL_TEST(newColumnsTakeTheConfiguredDisplay) {

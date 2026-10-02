@@ -154,9 +154,9 @@ namespace umbriel {
     virtual bool setTabbed(const View* view, bool tabbed) = 0;
     // Show `view` in its tab group. True only when the group now shows a different view.
     virtual bool selectTab(const View* view) = 0;
-    // Add `view`, not yet in the layout, to the tab group of column `column` that row `row` lies in or at either end
-    // of, as that row. False, adding nothing, when no group reaches that row.
-    virtual bool insertTab(View* view, int column, int row) = 0;
+    // Add `view`, not yet in the layout, at row `row` of the group containing `member` in column `column`.
+    // Either boundary belongs to the named group. False, adding nothing, when the row lies outside that group.
+    virtual bool insertTab(View* view, int column, int row, const View* member) = 0;
     // Move `view` one place among its tabs, `direction` negative for earlier. False at either end or outside a group.
     virtual bool moveTab(const View* view, int direction) = 0;
     // Draw or hide the bar of `view`'s tab group; nullopt toggles it. False outside a group.

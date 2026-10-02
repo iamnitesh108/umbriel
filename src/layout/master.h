@@ -66,7 +66,7 @@ namespace umbriel {
     [[nodiscard]] TabbedContainers* tabbedContainers() override { return this; }
     bool setTabbed(const View* view, bool tabbed) override;
     bool selectTab(const View* view) override;
-    bool insertTab(View* view, int column, int row) override;
+    bool insertTab(View* view, int column, int row, const View* member) override;
     bool moveTab(const View* view, int direction) override;
     bool setTabBar(const View* view, std::optional<bool> shown) override;
 

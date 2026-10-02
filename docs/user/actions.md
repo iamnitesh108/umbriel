@@ -297,6 +297,8 @@ See [Layout](layout.md) for geometry, directions, and resizing behavior.
 - Output direction actions do not wrap. The `next` and `previous` variants do.
 - Workspace `next`, `previous`, `move-up`, and `move-down` do not wrap.
 - A whole-column move preserves order, proportions, and column extent.
+  Between scrolling workspaces, it also preserves tab groups, their selected
+  tabs, and individual tab-bar visibility overrides.
 - Moving a multi-window column into Dwindle creates separate tiles.
 - `column-focus-tab-next` and `column-focus-tab-previous` wrap unless
   `layout.tabs.wrap_focus` is off. In the scrolling layout a tab group is one

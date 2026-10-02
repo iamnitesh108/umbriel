@@ -96,13 +96,17 @@ namespace umbriel {
       return std::nullopt;
     }
 
-    // A window joining a named column right after a tab group's tab becomes one of its tabs, as a consumed window does,
-    // so a column the rule keeps tabbed stays one group.
+    // Ordered members join the tab group at their insertion row, including either boundary.
     void joinNamedScrollingColumn(ScrollingLayout& layout, View* view, const NamedScrollingColumnPlacement& placement) {
       const auto column = static_cast<int>(placement.column);
       const Column& lane = layout.columns()[placement.column];
-      const bool afterTab = placement.row > 0 && lane.tabs.groupAt(static_cast<size_t>(placement.row - 1)) != nullptr;
-      if (!afterTab || !layout.insertTab(view, column, placement.row)) {
+      const auto row = static_cast<size_t>(placement.row);
+      const TabGroup* group = lane.tabs.groupAt(row);
+      if (group == nullptr && row > 0) {
+        group = lane.tabs.groupAt(row - 1);
+      }
+      const View* member = group != nullptr ? lane.views[group->active] : nullptr;
+      if (member == nullptr || !layout.insertTab(view, column, placement.row, member)) {
         layout.insertViewIntoColumn(view, column, placement.row);
       }
     }

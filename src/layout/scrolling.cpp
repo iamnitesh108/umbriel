@@ -579,7 +579,7 @@ namespace umbriel {
     insertRow(column, static_cast<size_t>(row), view, insertedWeight, 0.0);
   }
 
-  bool ScrollingLayout::insertTab(View* view, int columnIndex, int rowIndex) {
+  bool ScrollingLayout::insertTab(View* view, int columnIndex, int rowIndex, const View* member) {
     if (view == nullptr
         || columnOf(view) >= 0
         || columnIndex < 0
@@ -587,14 +587,15 @@ namespace umbriel {
       return false;
     }
     Column& column = m_columns[static_cast<size_t>(columnIndex)];
-    const auto row = static_cast<size_t>(std::clamp(rowIndex, 0, static_cast<int>(column.views.size())));
-    const std::vector<TabGroup>& groups = column.tabs.groups();
-    const auto group =
-        std::ranges::find_if(groups, [row](const TabGroup& each) { return row >= each.first && row <= each.end(); });
-    if (group == groups.end()) {
+    const TabGroup* group = tabGroupOf(column, member);
+    if (group == nullptr || rowIndex < 0) {
       return false;
     }
-    insertRow(column, row, view, 1.0, 0.0, static_cast<size_t>(group - groups.begin()));
+    const auto row = static_cast<size_t>(rowIndex);
+    if (row < group->first || row > group->end()) {
+      return false;
+    }
+    insertRow(column, row, view, 1.0, 0.0, static_cast<size_t>(group - column.tabs.groups().data()));
     return true;
   }
 
@@ -1196,7 +1197,7 @@ namespace umbriel {
       return false;
     }
     Column& column = m_columns[static_cast<size_t>(columnIndex)];
-    if (!column.tabs.empty() || (!tabs.empty() && tabs.groups().back().end() > column.views.size())) {
+    if (!tabs.empty() && tabs.groups().back().end() > column.views.size()) {
       return false;
     }
     column.tabs = tabs;

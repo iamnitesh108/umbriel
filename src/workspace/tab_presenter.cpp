@@ -265,6 +265,7 @@ namespace umbriel {
         const TabBarDrop drop = bar->dropAt(across ? lx - box.x : 0.0, across ? 0.0 : ly - box.y);
         return TabDrop{
             .row = static_cast<int>(group.first + std::min(drop.row, group.count)),
+            .member = column.views[group.active],
             .hint = {
                 .x = box.x + drop.marker.x,
                 .y = box.y + drop.marker.y,
@@ -284,7 +285,9 @@ namespace umbriel {
         continue;
       }
       const size_t row = afterActive ? group.active + 1 : group.end();
-      return TabDrop{.row = static_cast<int>(row), .hint = box.width > 0 ? box : tabs};
+      return TabDrop{
+          .row = static_cast<int>(row), .member = column.views[group.active], .hint = box.width > 0 ? box : tabs
+      };
     }
     return std::nullopt;
   }

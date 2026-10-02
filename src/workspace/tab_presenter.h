@@ -33,6 +33,7 @@ namespace umbriel {
   // Where a window dropped onto a tab group joins its tabs, as a row of the column, and the hint that shows it.
   struct TabDrop {
     int row = 0;
+    const View* member = nullptr;
     wlr_box hint{};
   };
 

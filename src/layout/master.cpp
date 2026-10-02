@@ -221,9 +221,14 @@ namespace umbriel {
     return true;
   }
 
-  bool MasterStackLayout::insertTab(View* view, int column, int row) {
+  bool MasterStackLayout::insertTab(View* view, int column, int row, const View* member) {
     const Area* area = visualArea(column);
-    if (view == nullptr || area == nullptr || !area->tabs.tabbed()) {
+    if (view == nullptr
+        || area == nullptr
+        || !area->tabs.tabbed()
+        || areaOf(member) != area
+        || row < 0
+        || static_cast<size_t>(row) > area->views.size()) {
       return false;
     }
     insertViewIntoColumn(view, column, row);

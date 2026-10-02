@@ -482,7 +482,7 @@ namespace umbriel {
     if (result.row >= 0) {
       if (const std::optional<TabDrop> tab = workspace.tabs().dropSlot(result.column, worldX, worldY)) {
         result.row = tab->row;
-        result.tab = true;
+        result.tab = tab->member;
         result.hintBox = tab->hint;
       }
     }
@@ -536,9 +536,9 @@ namespace umbriel {
     }
     TabbedContainers* containers = target.layout().tabbedContainers();
     const bool joinedTabs = drop.row >= 0
-        && drop.tab
+        && drop.tab != nullptr
         && containers != nullptr
-        && containers->insertTab(&view, std::max(0, drop.column), drop.row);
+        && containers->insertTab(&view, std::max(0, drop.column), drop.row, drop.tab);
     if (drop.row >= 0) {
       if (!joinedTabs) {
         target.layout().insertViewIntoColumn(&view, std::max(0, drop.column), drop.row);

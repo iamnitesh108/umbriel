@@ -35,8 +35,8 @@ namespace umbriel {
     Workspace* workspace = nullptr;
     int column = -1;
     int row = -1;
-    // Set when the row joins a tab group as one of its tabs rather than standing beside it.
-    bool tab = false;
+    // A member of the tab group the row joins, else null for a standalone row.
+    const View* tab = nullptr;
     View* view = nullptr;
     uint32_t edge = 0;
     wlr_box hintBox{};

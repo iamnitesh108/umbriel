@@ -101,11 +101,11 @@ namespace umbriel {
     [[nodiscard]] TabbedContainers* tabbedContainers() override { return this; }
     bool setTabbed(const View* view, bool tabbed) override;
     bool selectTab(const View* view) override;
-    bool insertTab(View* view, int column, int row) override;
+    bool insertTab(View* view, int column, int row, const View* member) override;
     bool moveTab(const View* view, int direction) override;
     bool setTabBar(const View* view, std::optional<bool> shown) override;
-    // Give column `columnIndex`, which has no tab groups, the groups `tabs` describes, for a column rebuilt row by row
-    // elsewhere. False when it has groups already or `tabs` reaches past its rows.
+    // Restore the tab groups of a column rebuilt row by row, replacing its initial display mode.
+    // False when `tabs` reaches past the column's rows.
     bool adoptTabs(int columnIndex, const ColumnTabs& tabs);
 
   private:
