@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Master tabs retain individual row weights, but a scrolling group has one shared
-# weight. A tab stepping out after transfer must inherit that group's weight.
+# Exercise the private rebuildTransferredColumn path with real client configures.
+# Unit coverage pins master's exported sum; this check verifies the transfer
+# restores the shared weight through a tab stepping out and a new row joining.
 set -euo pipefail
 
 wait_for_windows() {
