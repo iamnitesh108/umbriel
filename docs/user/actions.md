@@ -304,8 +304,7 @@ See [Layout](layout.md) for geometry, directions, and resizing behavior.
   `layout.tabs.wrap_focus` is off. In the scrolling layout a tab group is one
   row of its column: `window-focus-up` and `window-focus-down` step over it, and
   `window-move-up` and `window-move-down` take a tab out of it or a window into
-  it. A tab moved out shares the remaining group's row proportion. In a tabbed
-  master area they step through its tabs without wrapping.
+  it. In a tabbed master area they step through its tabs without wrapping.
 - Floating and pinned behavior is described in [Layout](layout.md) and
   [Scratchpads](scratchpad.md).
 - An action unavailable in the active layout does nothing from a keybind and
