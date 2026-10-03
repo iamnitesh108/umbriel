@@ -132,6 +132,8 @@ namespace umbriel {
     [[nodiscard]] bool visibleOn(Output* output) const;
     // Whether `view`, a member of `scratchpad`, is on screen.
     [[nodiscard]] static bool presents(const Scratchpad& scratchpad, const View* view);
+    // Whether `view` is a dialog of another member of scratchpad `name`, shown along with that member.
+    [[nodiscard]] bool ridesWithParent(const View* view, std::string_view name) const;
     enum class Admission { Interactive, Automatic };
     bool admit(
         View* view, std::string_view name, Output* invokingOutput, Admission admission,
