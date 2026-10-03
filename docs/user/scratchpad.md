@@ -34,8 +34,8 @@ time instead, bind `scratchpad-show-next` and `scratchpad-show-previous`:
 
 ```toml
 [keybinds]
-"Mod+Shift+Space" = "scratchpad-show-next"
-"Mod+Ctrl+Space" = "scratchpad-show-previous"
+"Mod+Alt+Space" = "scratchpad-show-next"
+"Mod+Alt+Shift+Space" = "scratchpad-show-previous"
 ```
 
 - On a hidden scratchpad, either action shows only its most recently focused
