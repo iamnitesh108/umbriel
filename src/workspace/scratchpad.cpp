@@ -551,6 +551,8 @@ namespace umbriel {
         view->setSceneParent(m_root);
         view->setOnActiveWorkspace(true);
         std::erase(m_hidingViews, view);
+        // A member a single-window scratchpad was not showing is still faded out; showing it here fades it back in.
+        view->cancelFadeAnimation();
         view->setNodeEnabled(true);
         if (view != alreadyPositioned) {
           syncViewPresentation(view, true);
