@@ -241,6 +241,8 @@ namespace umbriel {
     const bool wasActivated = view->activated();
     Output* sourceOutput = options.focusOrigin != nullptr ? options.focusOrigin : view->currentOutput();
     std::string previousScratchpad;
+    // Set when the window leaving another scratchpad was the one that scratchpad showed on its own.
+    bool leftPreviousSolo = false;
 
     const auto setReturnLocation = [](Entry& entry, Output* output, Workspace* workspace) {
       entry.returnOutput.clear();
@@ -272,6 +274,10 @@ namespace umbriel {
         if (Scratchpad* previous = findScratchpad(previousScratchpad);
             previous != nullptr && previous->lastFocused == view) {
           previous->lastFocused = nullptr;
+        }
+        if (Scratchpad* previous = findScratchpad(previousScratchpad); previous != nullptr && previous->solo == view) {
+          previous->solo = nullptr;
+          leftPreviousSolo = true;
         }
         existing->scratchpad = std::string(name);
       }
@@ -355,7 +361,8 @@ namespace umbriel {
       scratchpad->solo = view;
     }
     setVisible(name, visible, admission == Admission::Interactive);
-    if (transferring && !hasEntries(previousScratchpad)) {
+    // Without its shown window, a scratchpad showing one window hides rather than revealing all the others.
+    if (transferring && (leftPreviousSolo || !hasEntries(previousScratchpad))) {
       setVisible(previousScratchpad, false, admission == Admission::Interactive);
     }
     view->notifyOutputScale();
