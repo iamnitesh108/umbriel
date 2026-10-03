@@ -133,9 +133,28 @@ namespace umbriel {
   }
 
   bool ScratchpadManager::presents(const Scratchpad& scratchpad, const View* view) {
-    return scratchpad.visible
-        && scratchpad.output != nullptr
-        && (scratchpad.solo == nullptr || scratchpad.solo == view);
+    if (!scratchpad.visible || scratchpad.output == nullptr) {
+      return false;
+    }
+    if (scratchpad.solo == nullptr) {
+      return true;
+    }
+    // A dialog shows with the window it belongs to. The bound keeps a parent cycle from looping.
+    constexpr int kMaxParentDepth = 8;
+    const View* candidate = view;
+    for (int depth = 0; candidate != nullptr && depth <= kMaxParentDepth; ++depth) {
+      if (candidate == scratchpad.solo) {
+        return true;
+      }
+      candidate = candidate->shellParent();
+    }
+    return false;
+  }
+
+  bool ScratchpadManager::ridesWithParent(const View* view, std::string_view name) const {
+    const View* parent = view != nullptr ? view->shellParent() : nullptr;
+    const Entry* entry = parent != nullptr ? findEntry(parent) : nullptr;
+    return entry != nullptr && entry->scratchpad == name;
   }
 
   bool ScratchpadManager::contains(const View* view) const { return findEntry(view) != nullptr; }
@@ -330,8 +349,9 @@ namespace umbriel {
     view->setSceneParent(m_root);
     view->setInScratchpad(true);
     const bool visible = scratchpad->visible;
-    // A pad showing one window shows the one just added, in place of the others.
-    if (scratchpad->solo != nullptr) {
+    // A pad showing one window shows a window the user moves in, in place of the others. A dialog that joins with its
+    // parent shows alongside it instead.
+    if (scratchpad->solo != nullptr && admission == Admission::Interactive) {
       scratchpad->solo = view;
     }
     setVisible(name, visible, admission == Admission::Interactive);
@@ -1011,9 +1031,13 @@ namespace umbriel {
       // An empty pad behaves as toggle does: it may launch its spawn_when_empty command.
       return toggle(name, invokingOutput);
     }
+    // Dialogs are not steps of their own: they show with the window they belong to.
     std::vector<View*> members;
     for (const Entry& entry : m_entries) {
-      if (entry.scratchpad == name && entry.view != nullptr && entry.view->mapped()) {
+      if (entry.scratchpad == name
+          && entry.view != nullptr
+          && entry.view->mapped()
+          && !ridesWithParent(entry.view, name)) {
         members.push_back(entry.view);
       }
     }
