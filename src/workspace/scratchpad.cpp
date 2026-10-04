@@ -384,7 +384,9 @@ namespace umbriel {
     output->updateVrr();
     output->updateHdr();
     m_server->scheduleIpcWindowsEvent();
-    if (admission == Admission::Interactive || (wasActivated && !visible)) {
+    // A focused window that ends up off screen gives up focus: its scratchpad may be hidden, or may show another
+    // window on its own.
+    if (admission == Admission::Interactive || (wasActivated && !presents(*scratchpad, view))) {
       m_server->refocus(sourceOutput);
     }
     return true;
