@@ -20,6 +20,8 @@ namespace umbriel {
   namespace {
     constexpr std::string_view kImplicitScratchpad = "default";
     constexpr std::chrono::seconds kSpawnTimeout{10};
+    // How far a dialog's parent chain is followed. The bound keeps a parent cycle from looping.
+    constexpr int kMaxParentDepth = 8;
 
     wlr_box usableArea(Server& server, Output* output) {
       if (output == nullptr) {
@@ -139,8 +141,7 @@ namespace umbriel {
     if (scratchpad.solo == nullptr) {
       return true;
     }
-    // A dialog shows with the window it belongs to. The bound keeps a parent cycle from looping.
-    constexpr int kMaxParentDepth = 8;
+    // A dialog shows with the window it belongs to.
     const View* candidate = view;
     for (int depth = 0; candidate != nullptr && depth <= kMaxParentDepth; ++depth) {
       if (candidate == scratchpad.solo) {
@@ -155,6 +156,21 @@ namespace umbriel {
     const View* parent = view != nullptr ? view->shellParent() : nullptr;
     const Entry* entry = parent != nullptr ? findEntry(parent) : nullptr;
     return entry != nullptr && entry->scratchpad == name;
+  }
+
+  void ScratchpadManager::forgetLastFocused(Scratchpad& scratchpad, std::string_view name, const View* view) const {
+    if (view == nullptr || scratchpad.lastFocused != view) {
+      return;
+    }
+    scratchpad.lastFocused = nullptr;
+    View* owner = view->shellParent();
+    for (int depth = 0; owner != nullptr && owner != view && depth < kMaxParentDepth; ++depth) {
+      if (const Entry* entry = findEntry(owner); entry != nullptr && entry->scratchpad == name) {
+        scratchpad.lastFocused = owner;
+        return;
+      }
+      owner = owner->shellParent();
+    }
   }
 
   bool ScratchpadManager::contains(const View* view) const { return findEntry(view) != nullptr; }
@@ -271,9 +287,8 @@ namespace umbriel {
       }
       previousScratchpad = existing->scratchpad;
       if (!sameScratchpad) {
-        if (Scratchpad* previous = findScratchpad(previousScratchpad);
-            previous != nullptr && previous->lastFocused == view) {
-          previous->lastFocused = nullptr;
+        if (Scratchpad* previous = findScratchpad(previousScratchpad); previous != nullptr) {
+          forgetLastFocused(*previous, previousScratchpad, view);
         }
         if (Scratchpad* previous = findScratchpad(previousScratchpad); previous != nullptr && previous->solo == view) {
           previous->solo = nullptr;
@@ -1063,16 +1078,26 @@ namespace umbriel {
     if (members.empty()) {
       return false;
     }
+    // A focused or remembered dialog stands for the member it belongs to.
+    const auto findMember = [&members](const View* view) {
+      for (int depth = 0; view != nullptr && depth <= kMaxParentDepth; ++depth) {
+        if (const auto found = std::ranges::find(members, view); found != members.end()) {
+          return found;
+        }
+        view = view->shellParent();
+      }
+      return members.end();
+    };
     const bool shownHere = scratchpad->visible && scratchpad->output == invokingOutput;
     View* target = nullptr;
     if (shownHere) {
       // Step from the window on show, or from the focused one when every window shows.
-      const auto current = std::ranges::find(members, focused(name));
+      const auto current = findMember(focused(name));
       const auto count = static_cast<std::ptrdiff_t>(members.size());
       const std::ptrdiff_t index = current == members.end() ? 0 : current - members.begin();
       target = members[static_cast<size_t>((index + direction + count) % count)];
     } else {
-      const auto remembered = std::ranges::find(members, scratchpad->lastFocused);
+      const auto remembered = findMember(scratchpad->lastFocused);
       target = remembered != members.end() ? *remembered : members.front();
     }
     scratchpad->solo = target;
@@ -1095,8 +1120,8 @@ namespace umbriel {
     Entry entry = std::move(*iterator);
     Scratchpad* scratchpad = findScratchpad(entry.scratchpad);
     Output* scratchpadOutput = scratchpad != nullptr ? scratchpad->output : fallback;
-    if (scratchpad != nullptr && scratchpad->lastFocused == view) {
-      scratchpad->lastFocused = nullptr;
+    if (scratchpad != nullptr) {
+      forgetLastFocused(*scratchpad, entry.scratchpad, view);
     }
     const bool wasSolo = scratchpad != nullptr && scratchpad->solo == view;
     m_entries.erase(iterator);
@@ -1181,8 +1206,8 @@ namespace umbriel {
     if (m_focusedView == view) {
       m_focusedView = nullptr;
     }
-    if (scratchpad != nullptr && scratchpad->lastFocused == view) {
-      scratchpad->lastFocused = nullptr;
+    if (scratchpad != nullptr) {
+      forgetLastFocused(*scratchpad, name, view);
     }
     const bool wasSolo = scratchpad != nullptr && scratchpad->solo == view;
     std::erase(m_hidingViews, view);

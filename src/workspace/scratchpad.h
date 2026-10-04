@@ -134,6 +134,9 @@ namespace umbriel {
     [[nodiscard]] static bool presents(const Scratchpad& scratchpad, const View* view);
     // Whether `view` is a dialog of another member of scratchpad `name`, shown along with that member.
     [[nodiscard]] bool ridesWithParent(const View* view, std::string_view name) const;
+    // Called as `view` leaves scratchpad `name`: if it was the window focused last, a dialog hands that over to the
+    // member of the scratchpad it belongs to, and any other window clears it.
+    void forgetLastFocused(Scratchpad& scratchpad, std::string_view name, const View* view) const;
     enum class Admission { Interactive, Automatic };
     bool admit(
         View* view, std::string_view name, Output* invokingOutput, Admission admission,
