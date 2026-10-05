@@ -134,6 +134,9 @@ namespace umbriel {
     [[nodiscard]] static bool presents(const Scratchpad& scratchpad, const View* view);
     // Whether `view` is a dialog of another member of scratchpad `name`, shown along with that member.
     [[nodiscard]] bool ridesWithParent(const View* view, std::string_view name) const;
+    // The regular member of scratchpad `name` that `view` belongs to: `view` itself, or for a dialog the member it was
+    // opened from.
+    [[nodiscard]] View* memberFor(View* view, std::string_view name) const;
     // Called as `view` leaves scratchpad `name`: if it was the window focused last, a dialog hands that over to the
     // member of the scratchpad it belongs to, and any other window clears it.
     void forgetLastFocused(Scratchpad& scratchpad, std::string_view name, const View* view) const;

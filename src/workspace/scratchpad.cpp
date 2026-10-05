@@ -158,6 +158,13 @@ namespace umbriel {
     return entry != nullptr && entry->scratchpad == name;
   }
 
+  View* ScratchpadManager::memberFor(View* view, std::string_view name) const {
+    for (int depth = 0; depth < kMaxParentDepth && ridesWithParent(view, name); ++depth) {
+      view = view->shellParent();
+    }
+    return view;
+  }
+
   void ScratchpadManager::forgetLastFocused(Scratchpad& scratchpad, std::string_view name, const View* view) const {
     if (view == nullptr || scratchpad.lastFocused != view) {
       return;
@@ -370,10 +377,10 @@ namespace umbriel {
     view->setSceneParent(m_root);
     view->setInScratchpad(true);
     const bool visible = scratchpad->visible;
-    // A pad showing one window shows a window the user moves in, in place of the others. A dialog that joins with its
-    // parent shows alongside it instead.
+    // A pad showing one window shows a window the user moves in, in place of the others; a dialog brings the member it
+    // belongs to. A dialog that joins with its parent automatically shows alongside it instead.
     if (scratchpad->solo != nullptr && admission == Admission::Interactive) {
-      scratchpad->solo = view;
+      scratchpad->solo = memberFor(view, name);
     }
     setVisible(name, visible, admission == Admission::Interactive);
     // Without its shown window, a scratchpad showing one window hides rather than revealing all the others.
@@ -826,7 +833,8 @@ namespace umbriel {
     if (scratchpad == nullptr || invokingOutput == nullptr || !hasEntries(name)) {
       return false;
     }
-    // A pad showing one window shows the member asked for instead.
+    // A pad showing one window shows the member asked for instead; a dialog shows with the member it belongs to.
+    member = memberFor(member, name);
     if (member != nullptr && scratchpad->solo != nullptr && scratchpad->solo != member) {
       scratchpad->solo = member;
       if (scratchpad->output == invokingOutput) {
@@ -1081,15 +1089,7 @@ namespace umbriel {
       return false;
     }
     // A focused or remembered dialog stands for the member it belongs to.
-    const auto findMember = [&members](const View* view) {
-      for (int depth = 0; view != nullptr && depth <= kMaxParentDepth; ++depth) {
-        if (const auto found = std::ranges::find(members, view); found != members.end()) {
-          return found;
-        }
-        view = view->shellParent();
-      }
-      return members.end();
-    };
+    const auto findMember = [&](View* view) { return std::ranges::find(members, memberFor(view, name)); };
     const bool shownHere = scratchpad->visible && scratchpad->output == invokingOutput;
     View* target = nullptr;
     if (shownHere) {
