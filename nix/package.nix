@@ -14,6 +14,8 @@
   pixman,
   cairo,
   pango,
+  nanosvg,
+  cmake,
   libGL,
   libdrm,
   libdisplay-info,
@@ -43,6 +45,8 @@ stdenv.mkDerivation {
     ninja
     pkg-config
     wayland-scanner
+    # Finds nanosvg, which ships only CMake package files; meson still configures the build.
+    cmake
   ];
 
   buildInputs = [
@@ -66,11 +70,17 @@ stdenv.mkDerivation {
     jemalloc
     cairo
     pango
+    nanosvg
   ];
+
+  dontUseCmakeConfigure = true;
 
   mesonBuildType = "release";
 
-  mesonFlags = [ (lib.mesonEnable "tests" false) ];
+  mesonFlags = [
+    (lib.mesonEnable "tests" false)
+    (lib.mesonEnable "svg_icons" true)
+  ];
 
   postPatch = ''
     substituteInPlace meson.build \

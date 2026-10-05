@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # harness: xdg-data=true
-# Overview badges show application icons with `app_icons`: one a desktop entry names and one found by app id, both PNGs
-# in the hicolor theme. Without it no icon is drawn. Beside a label, an icon stays when a typed sequence leaves the
+# Overview badges show application icons with `app_icons`: a PNG named by the desktop entry named after the app id, and
+# an SVG named by the entry whose StartupWMClass matches it. Without `app_icons` no icon is drawn. Beside a label, an icon stays when a typed sequence leaves the
 # label unmatched, and only the label goes. A reload to another `icon_theme` switches to that theme's icons and keeps
 # the ones it inherits.
 set -euo pipefail
@@ -18,20 +18,35 @@ readonly YELLOW='r > 0.9 && g > 0.9 && b < 0.1'
 readonly NOT_RED='!(r > 0.9 && g < 0.1 && b < 0.1)'
 BASELINE=$(< "$UMBRIEL_CONFIG")
 
-mkdir -p "$THEME/48x48/apps" "$XDG_DATA_HOME/icons/harness/48x48/apps" "$XDG_DATA_HOME/applications"
-printf '[Icon Theme]\nName=Hicolor\nDirectories=48x48/apps\n\n[48x48/apps]\nSize=48\nContext=Applications\nType=Threshold\n' \
-  > "$THEME/index.theme"
+mkdir -p "$THEME/48x48/apps" "$THEME/scalable/apps" "$XDG_DATA_HOME/icons/harness/48x48/apps" \
+  "$XDG_DATA_HOME/applications"
+cat > "$THEME/index.theme" << 'EOF'
+[Icon Theme]
+Name=Hicolor
+Directories=48x48/apps,scalable/apps
+
+[48x48/apps]
+Size=48
+Context=Applications
+Type=Threshold
+
+[scalable/apps]
+Size=48
+MinSize=16
+MaxSize=512
+Context=Applications
+Type=Scalable
+EOF
 printf '[Icon Theme]\nName=Harness\nInherits=hicolor\nDirectories=48x48/apps\n\n[48x48/apps]\nSize=48\nContext=Applications\nType=Threshold\n' \
   > "$XDG_DATA_HOME/icons/harness/index.theme"
-# Solid 48x48 PNGs. In hicolor: green for the desktop entry's icon, blue for the one named after its app id. The
-# harness theme replaces the green icon with a yellow one and inherits the blue one.
+# Solid 48x48 icons. In hicolor: a green PNG for the entry named after its app id, a blue SVG for the entry matched by
+# StartupWMClass. The harness theme replaces the green icon with a yellow one and inherits the blue one.
 python3 - "$XDG_DATA_HOME/icons" << 'PY'
 import struct, sys, zlib
 def chunk(kind, data):
     return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data))
 for path, pixel in (
     ("hicolor/48x48/apps/harness-green", b"\x00\xff\x00\xff"),
-    ("hicolor/48x48/apps/harness-blue", b"\x00\x00\xff\xff"),
     ("harness/48x48/apps/harness-green", b"\xff\xff\x00\xff"),
 ):
     rows = b"".join(b"\0" + pixel * 48 for _ in range(48))
@@ -39,8 +54,12 @@ for path, pixel in (
     png += chunk(b"IDAT", zlib.compress(rows)) + chunk(b"IEND", b"")
     open(f"{sys.argv[1]}/{path}.png", "wb").write(png)
 PY
+printf '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48"><rect width="48" height="48" fill="#0000ff"/></svg>\n' \
+  > "$THEME/scalable/apps/harness-blue.svg"
 printf '[Desktop Entry]\nType=Application\nName=Harness PNG\nIcon=harness-green\n' \
   > "$XDG_DATA_HOME/applications/harness-png.desktop"
+printf '[Desktop Entry]\nType=Application\nName=Harness SVG\nIcon=harness-blue\nStartupWMClass=Harness-Class\n' \
+  > "$XDG_DATA_HOME/applications/vendor-harness-1234.desktop"
 
 pointer() {
   "$POINTER" "$OUTPUT_W" "$OUTPUT_H" "$@"
@@ -83,7 +102,7 @@ green_badge_width() {
 "$UMBRIEL" clock-freeze
 FILL_COLOR=0xFFFF0000 APP_ID=harness-png "$CLIENT" png 600 600 > /dev/null 2>&1 &
 wait_for_count 1
-FILL_COLOR=0xFFFF0000 APP_ID=harness-blue "$CLIENT" blue 600 600 > /dev/null 2>&1 &
+FILL_COLOR=0xFFFF0000 APP_ID=harness-class "$CLIENT" blue 600 600 > /dev/null 2>&1 &
 wait_for_count 2
 FILL_COLOR=0xFFFF0000 APP_ID=harness-none "$CLIENT" none 600 600 > /dev/null 2>&1 &
 wait_for_count 3

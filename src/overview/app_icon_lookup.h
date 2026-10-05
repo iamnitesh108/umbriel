@@ -2,8 +2,10 @@
 
 #include <cstdint>
 #include <filesystem>
+#include <optional>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <vector>
 
 namespace umbriel {
@@ -22,15 +24,18 @@ namespace umbriel {
   [[nodiscard]] AppIconSearchPaths appIconSearchPaths();
 
   // Resolves application icons the way desktop entries and XDG icon themes describe them: the app's desktop entry
-  // names the icon, `theme` and the themes it inherits are searched before hicolor, then the unthemed fallbacks. Only
-  // application directories of each theme are searched. Theme indexes are parsed on construction and held until
-  // destruction, so keep a lookup only while resolving.
+  // names the icon, `theme` and the themes it inherits are searched before hicolor, then the unthemed fallbacks. The
+  // desktop entry is the one named after the app id or, failing that, the one whose StartupWMClass matches it. Only
+  // application directories of each theme are searched. Theme indexes are parsed on construction and the desktop
+  // entries scanned on the first StartupWMClass match, both held until destruction, so keep a lookup only while
+  // resolving.
   class AppIconLookup {
   public:
     AppIconLookup(AppIconSearchPaths paths, std::string_view theme);
 
-    // The PNG file for `appId` closest to `size` pixels, or empty when there is none.
-    [[nodiscard]] std::filesystem::path find(std::string_view appId, int size) const;
+    // The PNG file, or SVG file in builds that decode SVG, for `appId` closest to `size` pixels, or empty when there is
+    // none.
+    [[nodiscard]] std::filesystem::path find(std::string_view appId, int size);
 
   private:
     struct Directory {
@@ -48,12 +53,16 @@ namespace umbriel {
       std::vector<Directory> directories;
     };
 
-    [[nodiscard]] std::vector<std::string> iconNames(std::string_view appId) const;
+    [[nodiscard]] std::vector<std::string> iconNames(std::string_view appId);
+    // The Icon of the desktop entry whose StartupWMClass matches `appId`, ignoring case.
+    [[nodiscard]] std::string wmClassIcon(std::string_view appId);
     [[nodiscard]] std::filesystem::path findInTheme(const Theme& theme, std::string_view name, int size) const;
     void loadTheme(const std::string& name, std::vector<std::string>& visited);
 
     AppIconSearchPaths m_paths;
     std::vector<Theme> m_themes;
+    // Lowercased StartupWMClass to Icon over every desktop entry, built on first use.
+    std::optional<std::unordered_map<std::string, std::string>> m_wmClassIcons;
   };
 
 } // namespace umbriel

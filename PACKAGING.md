@@ -93,6 +93,8 @@ distribution-provided LTO and archive member pruning.
 - EGL, GLES2, and GBM
 - lcms2, optional; without it `umbrielfx` rejects client ICC profiles and keeps only its parametric color transforms
 - jemalloc on glibc, optional
+- nanosvg, optional; found through its CMake package files, so CMake must be installed at configure time. Without it
+  overview application icons use PNG files only. The `svg_icons` Meson feature forces the choice.
 
 The canonical dependency declarations are in [`meson.build`](meson.build).
 Distribution package names vary.

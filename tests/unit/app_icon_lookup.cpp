@@ -146,7 +146,7 @@ UMBRIEL_TEST(themeAndItsParentsComeBeforeHicolor) {
   const auto own = tree.write("icons/child/48x48/apps/first.png");
   const auto inherited = tree.write("icons/parent/48x48/apps/second.png");
   const auto fallback = tree.write("icons/hicolor/48x48/apps/third.png");
-  const AppIconLookup lookup = tree.lookup("child");
+  AppIconLookup lookup = tree.lookup("child");
   CHECK_EQ(lookup.find("first", 48), own);
   CHECK_EQ(lookup.find("second", 48), inherited);
   CHECK_EQ(lookup.find("third", 48), fallback);
@@ -182,6 +182,46 @@ UMBRIEL_TEST(scalableDirectoryCoversItsSize) {
   CHECK_EQ(tree.lookup().find("example", 48), icon);
 }
 
+UMBRIEL_TEST(startupWmClassFindsTheDesktopEntry) {
+  const IconTree tree("wm-class");
+  tree.theme("hicolor", {"48x48/apps:48:Threshold:Applications"});
+  tree.write(
+      "applications/vendor-example-1234.desktop", "[Desktop Entry]\nIcon=example-icon\nStartupWMClass=Example\n"
+  );
+  tree.write("applications/other.desktop", "[Desktop Entry]\nIcon=other-icon\nStartupWMClass=other\n");
+  const auto icon = tree.write("icons/hicolor/48x48/apps/example-icon.png");
+  tree.write("icons/hicolor/48x48/apps/other-icon.png");
+  AppIconLookup lookup = tree.lookup();
+  CHECK_EQ(lookup.find("example", 48), icon);
+  CHECK(lookup.find("unrelated", 48).empty());
+}
+
+UMBRIEL_TEST(desktopEntryNamedAfterAppIdBeatsStartupWmClass) {
+  const IconTree tree("wm-class-order");
+  tree.theme("hicolor", {"48x48/apps:48:Threshold:Applications"});
+  tree.desktop("example", "named-icon");
+  tree.write("applications/vendor.desktop", "[Desktop Entry]\nIcon=class-icon\nStartupWMClass=example\n");
+  const auto icon = tree.write("icons/hicolor/48x48/apps/named-icon.png");
+  tree.write("icons/hicolor/48x48/apps/class-icon.png");
+  CHECK_EQ(tree.lookup().find("example", 48), icon);
+}
+
+#ifdef UMBRIEL_SVG_ICONS
+UMBRIEL_TEST(scalableSvgCoversItsSize) {
+  const IconTree tree("svg");
+  tree.theme("hicolor", {"scalable/apps:48:Scalable:Applications", "16x16/apps:16:Threshold:Applications"});
+  const auto icon = tree.write("icons/hicolor/scalable/apps/example.svg");
+  tree.write("icons/hicolor/16x16/apps/example.png");
+  CHECK_EQ(tree.lookup().find("example", 48), icon);
+}
+
+UMBRIEL_TEST(absoluteSvgIconPathIsUsed) {
+  const IconTree tree("absolute-svg");
+  const auto icon = tree.write("elsewhere/example.svg");
+  tree.desktop("example", icon.string());
+  CHECK_EQ(tree.lookup().find("example", 48), icon);
+}
+#else
 UMBRIEL_TEST(svgIconsAreSkipped) {
   const IconTree tree("svg");
   tree.theme("hicolor", {"scalable/apps:48:Scalable:Applications", "16x16/apps:16:Threshold:Applications"});
@@ -189,5 +229,6 @@ UMBRIEL_TEST(svgIconsAreSkipped) {
   const auto icon = tree.write("icons/hicolor/16x16/apps/example.png");
   CHECK_EQ(tree.lookup().find("example", 48), icon);
 }
+#endif
 
 int main() { return RUN_TESTS(); }

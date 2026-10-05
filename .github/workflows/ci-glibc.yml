@@ -49,8 +49,8 @@ jobs:
       - name: Install dependencies
         run: |
           pacman -Syu --noconfirm --needed \
-            base-devel clang git jemalloc just meson ninja pkgconf \
-            cairo lcms2 libdisplay-info libdrm libinput libxkbcommon mesa pango pixman \
+            base-devel clang cmake git jemalloc just meson ninja pkgconf \
+            cairo lcms2 libdisplay-info libdrm libinput libxkbcommon mesa nanosvg pango pixman \
             nlohmann-json tomlplusplus wayland wayland-protocols wlroots0.20
 
       - name: Check out repository
@@ -80,8 +80,8 @@ jobs:
       - name: Install dependencies
         run: |
           pacman -Syu --noconfirm --needed \
-            base-devel clang git jemalloc just meson ninja pkgconf \
-            cairo lcms2 libdisplay-info libdrm libinput libxkbcommon mesa pango pixman \
+            base-devel clang cmake git jemalloc just meson ninja pkgconf \
+            cairo lcms2 libdisplay-info libdrm libinput libxkbcommon mesa nanosvg pango pixman \
             nlohmann-json tomlplusplus wayland wayland-protocols wlroots0.20
 
       - name: Check out repository

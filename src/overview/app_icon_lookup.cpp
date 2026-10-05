@@ -16,6 +16,18 @@ namespace umbriel {
 
     using Group = std::unordered_map<std::string, std::string>;
 
+#ifdef UMBRIEL_SVG_ICONS
+    constexpr std::string_view kExtensions[] = {".png", ".svg"};
+#else
+    constexpr std::string_view kExtensions[] = {".png"};
+#endif
+
+    std::string lowercase(std::string_view text) {
+      std::string lower(text);
+      std::ranges::transform(lower, lower.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+      return lower;
+    }
+
     std::string_view trim(std::string_view text) {
       const size_t first = text.find_first_not_of(" \t\r");
       if (first == std::string_view::npos) {
@@ -82,13 +94,19 @@ namespace umbriel {
       return std::filesystem::is_regular_file(path, error);
     }
 
-    // The first PNG named `name` in `subdir` of any of `roots`.
+    bool decodable(const std::filesystem::path& path) {
+      return std::ranges::find(kExtensions, path.extension().string()) != std::end(kExtensions);
+    }
+
+    // The first decodable icon named `name` in `subdir` of any of `roots`.
     std::filesystem::path fileIn(
         const std::vector<std::filesystem::path>& roots, const std::filesystem::path& subdir, std::string_view name
     ) {
       for (const std::filesystem::path& root : roots) {
-        if (std::filesystem::path path = root / subdir / (std::string(name) + ".png"); isFile(path)) {
-          return path;
+        for (const std::string_view extension : kExtensions) {
+          if (std::filesystem::path path = root / subdir / (std::string(name) + std::string(extension)); isFile(path)) {
+            return path;
+          }
         }
       }
       return {};
@@ -202,11 +220,9 @@ namespace umbriel {
     }
   }
 
-  std::vector<std::string> AppIconLookup::iconNames(std::string_view appId) const {
+  std::vector<std::string> AppIconLookup::iconNames(std::string_view appId) {
     std::vector<std::string> ids{std::string(appId)};
-    std::string lower(appId);
-    std::ranges::transform(lower, lower.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-    if (lower != ids.front()) {
+    if (std::string lower = lowercase(appId); lower != ids.front()) {
       ids.push_back(std::move(lower));
     }
 
@@ -229,8 +245,40 @@ namespace umbriel {
         break;
       }
     }
+    if (names.empty()) {
+      if (std::string icon = wmClassIcon(appId); !icon.empty()) {
+        names.push_back(std::move(icon));
+      }
+    }
     std::ranges::move(ids, std::back_inserter(names));
     return names;
+  }
+
+  std::string AppIconLookup::wmClassIcon(std::string_view appId) {
+    if (!m_wmClassIcons) {
+      m_wmClassIcons.emplace();
+      for (const std::filesystem::path& dir : m_paths.applications) {
+        std::error_code error;
+        for (std::filesystem::directory_iterator entry(dir, error), end; !error && entry != end;
+             entry.increment(error)) {
+          if (entry->path().extension() != ".desktop") {
+            continue;
+          }
+          const auto groups = readKeyFile(entry->path());
+          const auto group = groups.find("Desktop Entry");
+          if (group == groups.end()) {
+            continue;
+          }
+          const std::string_view wmClass = value(group->second, "StartupWMClass");
+          const std::string_view icon = value(group->second, "Icon");
+          if (!wmClass.empty() && !icon.empty()) {
+            m_wmClassIcons->try_emplace(lowercase(wmClass), icon);
+          }
+        }
+      }
+    }
+    const auto icon = m_wmClassIcons->find(lowercase(appId));
+    return icon == m_wmClassIcons->end() ? std::string{} : icon->second;
   }
 
   std::filesystem::path AppIconLookup::findInTheme(const Theme& theme, std::string_view name, int size) const {
@@ -263,14 +311,14 @@ namespace umbriel {
     return best;
   }
 
-  std::filesystem::path AppIconLookup::find(std::string_view appId, int size) const {
+  std::filesystem::path AppIconLookup::find(std::string_view appId, int size) {
     if (!plainName(appId)) {
       return {};
     }
     const std::vector<std::string> names = iconNames(appId);
     for (const std::string& name : names) {
       if (name.starts_with('/')) {
-        if (isFile(name)) {
+        if (decodable(name) && isFile(name)) {
           return name;
         }
         continue;

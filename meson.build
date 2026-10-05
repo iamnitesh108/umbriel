@@ -126,6 +126,16 @@ libudev_dep = dependency('libudev', required: false)
 xcb_dep = dependency('xcb')
 xcb_icccm_dep = dependency('xcb-icccm')
 xcb_ewmh_dep = dependency('xcb-ewmh')
+# nanosvg installs CMake package files and no pkg-config file.
+nanosvg_dep = dependency(
+  'NanoSVG',
+  method: 'cmake',
+  modules: ['NanoSVG::nanosvg', 'NanoSVG::nanosvgrast'],
+  required: get_option('svg_icons'),
+)
+if nanosvg_dep.found()
+  add_project_arguments('-DUMBRIEL_SVG_ICONS', language: 'cpp')
+endif
 native_drm_policy_supported = wlr_has_drm_backend and libudev_dep.found()
 native_drm_policy_deps = []
 if native_drm_policy_supported
@@ -782,6 +792,7 @@ umbriel_core_deps = [
   xcb_dep,
   xcb_icccm_dep,
   xcb_ewmh_dep,
+  nanosvg_dep,
 ]
 
 umbriel_core = static_library(

@@ -34,6 +34,7 @@ Direct project dependencies. Transitive dependencies are owned by their providin
 | Graphics | `pixman`, `libdrm`, OpenGL via wlroots |
 | Text | `cairo`, `pangocairo` |
 | Memory allocation | `jemalloc` (optional, glibc) |
+| SVG icons | `nanosvg` (optional) |
 | Config | `tomlplusplus` |
 | JSON (IPC) | `nlohmann/json` |
 | Xwayland | wlroots' Xwayland server (`Xwayland` spawned on demand), `xcb`, `xcb-icccm`, `xcb-ewmh`, and test-only `xcb-render` |

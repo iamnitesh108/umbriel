@@ -86,12 +86,13 @@ beside the shortcut label. With `shortcuts = false` the badge shows only the
 icon. While a key sequence is pending, a card whose label no longer matches
 keeps its icon and drops the label.
 
-Umbriel finds the icon through the window's desktop entry, named after its app
-ID, and looks it up in `icon_theme`, the themes it inherits, and `hicolor`,
-then in `pixmaps` directories. Only PNG icons are used, so an application whose
-icon exists only as SVG shows no icon. Each application is looked up once per
-session and decoded only while the overview is open. With `app_icons = false`
-no icon is looked up or loaded.
+Umbriel finds the icon through the window's desktop entry: the one named after
+its app ID or, failing that, the one whose `StartupWMClass` matches it. The
+icon is looked up in `icon_theme`, the themes it inherits, and `hicolor`, then
+in `pixmaps` directories. PNG and SVG icons are used; a build without SVG
+support uses PNG icons only. Each application is looked up once per session and
+decoded only while the overview is open. With `app_icons = false` no icon is
+looked up or loaded.
 
 ### Move windows
 
