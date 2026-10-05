@@ -189,6 +189,8 @@ namespace umbriel {
               },
               [](const O& defaults) { return nlohmann::ordered_json(defaults.shortcutKeys); }
           ),
+          boolean("app_icons", &O::appIcons),
+          registry::text("icon_theme", &O::iconTheme),
       };
       return fields;
     }

@@ -42,6 +42,7 @@ unit_tests = [
   ['tabbed-layout', ['unit/tabbed_layout.cpp'], []],
   ['cheatsheet-rows', ['unit/cheatsheet_rows.cpp'], []],
   ['shortcut-labels', ['unit/shortcut_labels.cpp'], []],
+  ['app-icon-lookup', ['unit/app_icon_lookup.cpp'], []],
   ['border-ring', ['unit/border_ring.cpp'], []],
   ['floating', ['unit/floating.cpp'], []],
   ['drag-physics', ['unit/drag_physics.cpp'], []],

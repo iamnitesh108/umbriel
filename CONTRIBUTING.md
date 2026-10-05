@@ -153,6 +153,11 @@ A check that needs deterministic Xcursor images declares `# harness: xcursor-the
 isolated theme with distinct nominal sizes 24 and 48, exports its path and name, and writes the matching cursor
 configuration before the compositor starts.
 
+A check that reads desktop entries or icon themes declares `# harness: xdg-data=true`. The harness points `HOME`,
+`XDG_DATA_HOME`, and `XDG_DATA_DIRS` into the runtime directory for both the compositor and the check, so the check
+writes the files it needs under `$XDG_DATA_HOME` and nothing from the host is found. `XDG_CACHE_HOME` keeps the
+host's cache, so fontconfig reuses its font cache instead of rebuilding one per instance.
+
 A headless session starts with no keyboard, so the harness connects a keyboard-only helper to each instance before
 its check runs and keeps it through teardown, the way a real session always has one. Without it the seat's keyboard
 capability would come and go with each pointer-client run, and clients would bind `wl_keyboard` too late for the first

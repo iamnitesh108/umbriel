@@ -14,6 +14,8 @@ background_blur = true
 workspace_wallpaper = true
 shortcuts = true
 shortcut_keys = "1234567890"
+app_icons = false
+icon_theme = "hicolor"
 ```
 
 | Key | Default | Description |
@@ -25,6 +27,8 @@ shortcut_keys = "1234567890"
 | `workspace_wallpaper` | `true` | Show each output's background inside its workspace previews. |
 | `shortcuts` | `true` | Show and accept keyboard shortcut badges. |
 | `shortcut_keys` | `"1234567890"` | Preferred keys for shortcut badges. |
+| `app_icons` | `false` | Show each window's application icon in its badge. |
+| `icon_theme` | `"hicolor"` | Icon theme searched for application icons before `hicolor`. |
 
 Background blur uses `[appearance.blur]`. Preview backgrounds use
 `colors.overview.workspace_background` when wallpaper mirroring is disabled or
@@ -74,6 +78,20 @@ sequence first and closes the overview when no sequence is pending.
 Set `shortcuts = false` to disable badges. A normal keybind takes precedence
 over a badge. `shortcut_keys` must contain at least two unique printable ASCII
 characters.
+
+#### Application icons
+
+Set `app_icons = true` to show each window's application icon in its badge,
+beside the shortcut label. With `shortcuts = false` the badge shows only the
+icon. While a key sequence is pending, a card whose label no longer matches
+keeps its icon and drops the label.
+
+Umbriel finds the icon through the window's desktop entry, named after its app
+ID, and looks it up in `icon_theme`, the themes it inherits, and `hicolor`,
+then in `pixmaps` directories. Only PNG icons are used, so an application whose
+icon exists only as SVG shows no icon. Each application is looked up once per
+session and decoded only while the overview is open. With `app_icons = false`
+no icon is looked up or loaded.
 
 ### Move windows
 

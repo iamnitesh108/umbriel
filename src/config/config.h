@@ -861,6 +861,10 @@ namespace umbriel {
       bool shortcuts = true;
       // Favorite badge keys in preference order, one ASCII character each.
       std::string shortcutKeys = "1234567890";
+      // Show each card's application icon in its badge.
+      bool appIcons = false;
+      // XDG icon theme searched before hicolor for application icons.
+      std::string iconTheme = "hicolor";
       bool operator==(const Overview&) const = default;
     } overview;
 

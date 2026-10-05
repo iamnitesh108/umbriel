@@ -3,6 +3,7 @@
 #include "config/config.h"
 #include "core/animation.h"
 #include "layout/drop_target.h"
+#include "overview/app_icon_lookup.h"
 #include "overview/navigation.h"
 #include "scene/hint_rect.h"
 #include "scene/surface_blur.h"
@@ -11,8 +12,10 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <filesystem>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 #include <wayland-server-core.h>
 
@@ -20,6 +23,7 @@ extern "C" {
 #include <wlr/util/box.h>
 }
 
+struct wlr_buffer;
 struct wlr_scene_buffer;
 struct wlr_scene_border;
 struct wlr_scene_blur;
@@ -191,6 +195,7 @@ namespace umbriel {
       wlr_scene_tree* badge = nullptr;
       wlr_scene_rect* badgeRect = nullptr;
       wlr_scene_buffer* badgeText = nullptr;
+      wlr_scene_buffer* badgeIcon = nullptr;
       int badgeWidth = 0;
       int badgeHeight = 0;
       std::array<float, 4> badgeBackground{};
@@ -336,7 +341,10 @@ namespace umbriel {
     [[nodiscard]] View* liveTargetView() const;
     [[nodiscard]] std::array<float, 4> cardBorderColor(const Card& card, const View* liveTarget) const;
     void assignShortcuts();
-    void renderCardShortcut(Card& card);
+    void renderCardBadge(Card& card);
+    // The decoded icon of the card's app at `size` pixels, or null when it has none.
+    [[nodiscard]] wlr_buffer* cardIcon(const Card& card, int size);
+    void releaseIcons();
     bool handleShortcutKey(uint32_t keysym);
     void refreshShortcutMatches();
     void clearShortcutInput();
@@ -392,6 +400,13 @@ namespace umbriel {
     std::string m_shortcutInput;
     std::vector<ShortcutAssignment> m_shortcutAssignments;
     size_t m_shortcutLabelCapacity = 0;
+    // Icon files resolved in `m_iconTheme`, keyed by app id and pixel size, kept across opens so each app is searched
+    // once. An empty path records an app without an icon.
+    std::unordered_map<std::string, std::filesystem::path> m_iconPaths;
+    std::string m_iconTheme;
+    // Theme indexes and decoded icons, shared by every card of an app and released when the overview closes.
+    std::unique_ptr<AppIconLookup> m_iconLookup;
+    std::unordered_map<std::string, wlr_buffer*> m_iconBuffers;
     // Output under the pointer, which is the output the live target resolves against.
     Output* m_pointerOutput = nullptr;
 

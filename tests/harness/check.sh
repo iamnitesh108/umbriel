@@ -375,6 +375,13 @@ check_xwayland() {
   fi
 }
 
+# A check that reads desktop entries or icon themes gets empty private data directories, filled by the check itself.
+check_xdg_data() {
+  if sed -n '2,12p' "$CHECKS_DIR/$1.sh" | grep -q '^# harness: xdg-data=true'; then
+    echo true
+  fi
+}
+
 check_xcursor_theme() {
   if sed -n '2,12p' "$CHECKS_DIR/$1.sh" | grep -q '^# harness: xcursor-theme=true'; then
     echo umbriel-harness
@@ -483,6 +490,7 @@ start_instance() {
   local outputs=$1
   local xwayland=$2
   local cursor_theme=$3
+  local xdg_data=$4
   # sockaddr_un caps paths at 108 bytes and the compositor appends
   # "/umbriel-wayland-0.sock" (23) to XDG_RUNTIME_DIR, so keep the root short. A
   # long path makes wl_display_add_socket fail and the boot abort.
@@ -497,6 +505,12 @@ start_instance() {
       BOOT_ERROR="could not create the harness Xcursor theme"
       return 1
     fi
+  fi
+  if [[ -n $xdg_data ]]; then
+    # The cache stays the host's: a fresh one makes fontconfig rebuild its font cache on the first text it shapes.
+    export XDG_CACHE_HOME=${XDG_CACHE_HOME:-$HOME/.cache}
+    export HOME=$RUNTIME_DIR XDG_DATA_HOME=$RUNTIME_DIR/data XDG_DATA_DIRS=$RUNTIME_DIR/data-dirs
+    mkdir -p "$XDG_DATA_HOME" "$XDG_DATA_DIRS"
   fi
   write_default_config "$config" "$xwayland" "$cursor_theme"
 
@@ -675,7 +689,7 @@ run_one() {
   cursor_theme=$(check_xcursor_theme "$name")
 
   BOOT_ERROR=
-  if ! start_instance "$(check_outputs "$name")" "$(check_xwayland "$name")" "$cursor_theme"; then
+  if ! start_instance "$(check_outputs "$name")" "$(check_xwayland "$name")" "$cursor_theme" "$(check_xdg_data "$name")"; then
     publish "$prefix" 1 "$check_start" "$BOOT_ERROR"
     return 0
   fi
