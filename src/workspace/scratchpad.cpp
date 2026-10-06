@@ -925,14 +925,17 @@ namespace umbriel {
     if (scratchpad == nullptr || !scratchpad->visible || scratchpad->output == nullptr) {
       return nullptr;
     }
-    if (scratchpad->solo != nullptr) {
-      return scratchpad->solo;
-    }
     if (scratchpad->lastFocused != nullptr) {
       const Entry* remembered = findEntry(scratchpad->lastFocused);
-      if (remembered != nullptr && remembered->scratchpad == name && scratchpad->lastFocused->mapped()) {
+      if (remembered != nullptr
+          && remembered->scratchpad == name
+          && scratchpad->lastFocused->mapped()
+          && presents(*scratchpad, scratchpad->lastFocused)) {
         return scratchpad->lastFocused;
       }
+    }
+    if (scratchpad->solo != nullptr) {
+      return scratchpad->solo;
     }
     for (const Entry& entry : m_entries) {
       if (entry.scratchpad == name && entry.view != nullptr && entry.view->mapped()) {
