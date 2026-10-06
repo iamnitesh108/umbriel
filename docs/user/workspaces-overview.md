@@ -16,6 +16,8 @@ shortcuts = true
 shortcut_keys = "1234567890"
 app_icons = false
 icon_theme = "hicolor"
+icon_size = 24
+badge_position = [0.0, 0.0]
 ```
 
 | Key | Default | Description |
@@ -28,7 +30,9 @@ icon_theme = "hicolor"
 | `shortcuts` | `true` | Show and accept keyboard shortcut badges. |
 | `shortcut_keys` | `"1234567890"` | Preferred keys for shortcut badges. |
 | `app_icons` | `false` | Show each window's application icon in its badge. |
-| `icon_theme` | `"hicolor"` | Icon theme searched for application icons before `hicolor`. |
+| `icon_theme` | `"hicolor"` | Icon theme for application icons; icons it lacks come from `hicolor`. |
+| `icon_size` | `24` | Application icon size in logical pixels, from 12 to 128. |
+| `badge_position` | `[0.0, 0.0]` | Badge placement on its card as `[x, y]` fractions from 0 to 1. |
 
 Background blur uses `[appearance.blur]`. Preview backgrounds use
 `colors.overview.workspace_background` when wallpaper mirroring is disabled or
@@ -93,6 +97,16 @@ in `pixmaps` directories. PNG and SVG icons are used; a build without SVG
 support uses PNG icons only. Each application is looked up once per session and
 decoded only while the overview is open. With `app_icons = false` no icon is
 looked up or loaded.
+
+#### Badge placement
+
+`badge_position` places every badge, label or icon, as fractions of the room
+the card leaves around it: `[0, 0]` is the top-left corner, `[1, 1]` the
+bottom-right, `[0.5, 0.5]` the center, and any value between works, such as
+`[0.6, 0.4]`. The badge always stays inside the card's margin, and slides just
+far enough to stay visible when its card runs past the output edge or under a
+panel. A badge larger than its card is hidden, so a large
+`icon_size` can hide badges on small cards.
 
 ### Move windows
 

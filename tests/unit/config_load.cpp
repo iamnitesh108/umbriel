@@ -6,6 +6,7 @@
 #include <array>
 #include <cstdlib>
 #include <filesystem>
+#include <format>
 #include <fstream>
 #include <linux/input-event-codes.h>
 #include <optional>
@@ -1222,6 +1223,38 @@ UMBRIEL_TEST(overviewShortcutKeysRejectInvalidValues) {
   CHECK(store.reload().success);
   CHECK_EQ(store.config().overview.shortcutKeys, std::string{"1234567890"});
   CHECK(containsDiagnostic(store, "expected string"));
+}
+
+UMBRIEL_TEST(overviewBadgeConfigurationLoads) {
+  const TempConfig file;
+  ConfigStore& store = umbriel::configStore();
+  store.setRootPath(file.path(), true);
+
+  file.write("[overview]\nicon_size = 48\nbadge_position = [0.6, 1]\n");
+  CHECK(store.reload().success);
+  CHECK_EQ(store.config().overview.iconSize, 48);
+  CHECK_EQ(store.config().overview.badgePosition[0], 0.6);
+  CHECK_EQ(store.config().overview.badgePosition[1], 1.0);
+}
+
+UMBRIEL_TEST(overviewBadgePositionRejectsInvalidValues) {
+  const TempConfig file;
+  ConfigStore& store = umbriel::configStore();
+  store.setRootPath(file.path(), true);
+  const std::array<double, 2> topLeft{0.0, 0.0};
+
+  for (const char* value : {"[0.5]", "[0.5, 0.5, 0.5]", "0.5"}) {
+    file.write(std::format("[overview]\nbadge_position = {}\n", value));
+    CHECK(store.reload().success);
+    CHECK(store.config().overview.badgePosition == topLeft);
+    CHECK(containsDiagnostic(store, "expected [x, y]"));
+  }
+  for (const char* value : {"[1.2, 0]", "[0, -0.1]", "[nan, 0]", "[0, inf]", "[0.5, \"top\"]"}) {
+    file.write(std::format("[overview]\nbadge_position = {}\n", value));
+    CHECK(store.reload().success);
+    CHECK(store.config().overview.badgePosition == topLeft);
+    CHECK(containsDiagnostic(store, "expected numbers from 0 to 1"));
+  }
 }
 
 UMBRIEL_TEST(colorsSectionOwnsEveryColor) {

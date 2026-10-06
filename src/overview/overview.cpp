@@ -54,8 +54,7 @@ namespace umbriel {
     constexpr float kLandingTargetBlend = 0.4F;
     // Inset of a shortcut badge from the card edge it hugs.
     constexpr int kBadgeMargin = 6;
-    // Logical size of an application icon in a badge, and its inset from the badge edge.
-    constexpr int kBadgeIconSize = 24;
+    // Inset of an application icon from the edge of its badge.
     constexpr int kBadgeIconInset = 4;
 
     std::array<float, 4> mixColor(const std::array<float, 4>& from, const std::array<float, 4>& to, float amount) {
@@ -321,18 +320,24 @@ namespace umbriel {
       const bool badgeOn = fits && !m_closing && &card != m_dragCard && badgeAlpha > 0.01F;
       wlr_scene_node_set_enabled(&card.badge->node, badgeOn);
       if (badgeOn) {
-        // The badge hugs the card's top-left corner, the only corner the output clip or the top/overlay exclusive
-        // zones can hide. On each axis it slides just far enough to clear the start of the usable area, never past
-        // the card's opposite inset, where a card scrolled out of view keeps it. `fits` keeps the card-local bounds
-        // ordered.
-        const auto inset = [](int origin, int extent, int badgeExtent, int clipStart) {
-          return std::clamp(
-              std::max(clipStart, origin) + kBadgeMargin - origin, kBadgeMargin, extent - badgeExtent - kBadgeMargin
+        // On each axis the badge sits at its configured fraction of the room inside the card's margins, then slides
+        // just far enough to stay inside the usable area, which the output clip and the top/overlay exclusive zones
+        // bound; clearing the start wins when both edges are in reach. It never leaves the card's margins, where a
+        // card scrolled out of view keeps it. `fits` keeps those bounds ordered.
+        const auto place = [](double fraction, int origin, int extent, int badgeExtent, int clipStart, int clipEnd) {
+          const int preferred =
+              kBadgeMargin + static_cast<int>(std::lround(fraction * (extent - badgeExtent - 2 * kBadgeMargin)));
+          const int visible = std::max(
+              std::min(preferred, clipEnd - kBadgeMargin - badgeExtent - origin), clipStart + kBadgeMargin - origin
           );
+          return std::clamp(visible, kBadgeMargin, extent - badgeExtent - kBadgeMargin);
         };
+        const std::array<double, 2>& position = config().overview.badgePosition;
+        const wlr_box& usable = metrics.usableBox;
         wlr_scene_node_set_position(
-            &card.badge->node, inset(card.box.x, contentW, card.badgeWidth, metrics.usableBox.x),
-            inset(card.box.y, contentH, card.badgeHeight, metrics.usableBox.y)
+            &card.badge->node,
+            place(position[0], card.box.x, contentW, card.badgeWidth, usable.x, usable.x + usable.width),
+            place(position[1], card.box.y, contentH, card.badgeHeight, usable.y, usable.y + usable.height)
         );
         if (card.badgeText != nullptr) {
           wlr_scene_buffer_set_opacity(card.badgeText, badgeAlpha);
@@ -1301,8 +1306,9 @@ namespace umbriel {
     }
 
     const double scale = std::max(1.0, std::ceil(static_cast<double>(card.owner->output->wlr()->scale)));
+    const int iconSize = config().overview.iconSize;
     wlr_buffer* icon =
-        config().overview.appIcons ? cardIcon(card, static_cast<int>(std::lround(kBadgeIconSize * scale))) : nullptr;
+        config().overview.appIcons ? cardIcon(card, static_cast<int>(std::lround(iconSize * scale))) : nullptr;
     // The label shows while it matches the typed sequence; the icon always shows.
     const bool labeled = !card.shortcut.empty() && card.shortcutMatched != SIZE_MAX;
     if (!labeled && icon == nullptr) {
@@ -1345,10 +1351,9 @@ namespace umbriel {
     // never narrower than it is tall, so a single character reads as a square.
     // An icon leads the label, inset as far from the side as from the top.
     constexpr int kBadgeSidePad = 8;
-    const int badgeHeight =
-        std::max(rendered.logicalHeight, icon != nullptr ? kBadgeIconSize + 2 * kBadgeIconInset : 0);
-    const int iconInset = (badgeHeight - kBadgeIconSize) / 2;
-    const int labelX = icon != nullptr ? iconInset + kBadgeIconSize + kBadgeIconInset : kBadgeSidePad;
+    const int badgeHeight = std::max(rendered.logicalHeight, icon != nullptr ? iconSize + 2 * kBadgeIconInset : 0);
+    const int iconInset = (badgeHeight - iconSize) / 2;
+    const int labelX = icon != nullptr ? iconInset + iconSize + kBadgeIconInset : kBadgeSidePad;
     const int badgeWidth =
         labeled ? std::max(labelX + rendered.logicalWidth + kBadgeSidePad, badgeHeight) : badgeHeight;
     const std::array<float, 4> background = tint(card.badgeBackground, 1.0);
@@ -1381,7 +1386,7 @@ namespace umbriel {
     }
     if (card.badgeIcon != nullptr) {
       wlr_scene_node_set_position(&card.badgeIcon->node, iconInset, iconInset);
-      wlr_scene_buffer_set_dest_size(card.badgeIcon, kBadgeIconSize, kBadgeIconSize);
+      wlr_scene_buffer_set_dest_size(card.badgeIcon, iconSize, iconSize);
       card.badgeIcon->point_accepts_input = rejectInput;
     }
     card.badgeWidth = badgeWidth;

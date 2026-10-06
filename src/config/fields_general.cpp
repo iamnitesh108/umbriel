@@ -6,6 +6,8 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
+#include <cstddef>
 #include <format>
 #include <optional>
 #include <string>
@@ -169,6 +171,24 @@ namespace umbriel {
       return value;
     }
 
+    std::optional<std::array<double, 2>> parseBadgePosition(const toml::node& node, const std::string& path) {
+      const auto* values = node.as_array();
+      if (values == nullptr || values->size() != 2) {
+        warnAt(node.source(), "ignoring {} (expected [x, y])", path);
+        return std::nullopt;
+      }
+      std::array<double, 2> position{};
+      for (size_t axis = 0; axis < position.size(); ++axis) {
+        const auto value = (*values)[axis].value<double>();
+        if (!value || !std::isfinite(*value) || *value < 0.0 || *value > 1.0) {
+          warnAt(node.source(), "ignoring {} (expected numbers from 0 to 1)", path);
+          return std::nullopt;
+        }
+        position[axis] = *value;
+      }
+      return position;
+    }
+
     const registry::Fields<Config::Overview>& overviewFields() {
       using registry::boolean;
       using registry::real;
@@ -191,6 +211,16 @@ namespace umbriel {
           ),
           boolean("app_icons", &O::appIcons),
           registry::text("icon_theme", &O::iconTheme),
+          registry::integer("icon_size", 12, 128, &O::iconSize),
+          registry::custom<O>(
+              "badge_position", registry::KeyDescription("array"),
+              [](const toml::node& node, const std::string& path, O& target, registry::ReadContext&) {
+                if (auto position = parseBadgePosition(node, path)) {
+                  target.badgePosition = *position;
+                }
+              },
+              [](const O& defaults) { return nlohmann::ordered_json(defaults.badgePosition); }
+          ),
       };
       return fields;
     }
