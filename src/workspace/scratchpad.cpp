@@ -22,6 +22,8 @@ namespace umbriel {
     constexpr std::chrono::seconds kSpawnTimeout{10};
     // How far a dialog's parent chain is followed. The bound keeps a parent cycle from looping.
     constexpr int kMaxParentDepth = 8;
+    // Presented opacity at or below which a fading window counts as hidden.
+    constexpr float kFadedOutOpacity = 0.002F;
 
     wlr_box usableArea(Server& server, Output* output) {
       if (output == nullptr) {
@@ -79,7 +81,7 @@ namespace umbriel {
       return movedBackdrop;
     }
     std::erase_if(m_hidingViews, [](View* view) {
-      if (view->presentedOpacity() > 0.002F) {
+      if (view->presentedOpacity() > kFadedOutOpacity) {
         return false;
       }
       view->setNodeEnabled(false);
@@ -143,13 +145,10 @@ namespace umbriel {
     }
     // A dialog shows with the window it belongs to.
     const View* candidate = view;
-    for (int depth = 0; candidate != nullptr && depth <= kMaxParentDepth; ++depth) {
-      if (candidate == scratchpad.solo) {
-        return true;
-      }
+    for (int depth = 0; depth < kMaxParentDepth && candidate != nullptr && candidate != scratchpad.solo; ++depth) {
       candidate = candidate->shellParent();
     }
-    return false;
+    return candidate == scratchpad.solo;
   }
 
   bool ScratchpadManager::ridesWithParent(const View* view, std::string_view name) const {
@@ -296,10 +295,10 @@ namespace umbriel {
       if (!sameScratchpad) {
         if (Scratchpad* previous = findScratchpad(previousScratchpad); previous != nullptr) {
           forgetLastFocused(*previous, previousScratchpad, view);
-        }
-        if (Scratchpad* previous = findScratchpad(previousScratchpad); previous != nullptr && previous->solo == view) {
-          previous->solo = nullptr;
-          leftPreviousSolo = true;
+          if (previous->solo == view) {
+            previous->solo = nullptr;
+            leftPreviousSolo = true;
+          }
         }
         existing->scratchpad = std::string(name);
       }
@@ -477,8 +476,8 @@ namespace umbriel {
         // membership through moveScratchpad().
         view->enterForeignOutput(output);
         // A member already faded out, such as one a single-window pad was not showing, has nothing left to fade.
-        const bool alreadyHidden =
-            view->presentedOpacity() <= 0.002F && std::ranges::find(m_hidingViews, view) == m_hidingViews.end();
+        const bool alreadyHidden = view->presentedOpacity() <= kFadedOutOpacity
+            && std::ranges::find(m_hidingViews, view) == m_hidingViews.end();
         if (animate && !alreadyHidden) {
           view->setNodeEnabled(true);
           view->animateFadeTo(0.0F, scratchpad.durationMs, scratchpad.curve);

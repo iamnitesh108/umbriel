@@ -138,7 +138,7 @@ namespace umbriel {
     // opened from.
     [[nodiscard]] View* memberFor(View* view, std::string_view name) const;
     // Called as `view` leaves scratchpad `name`: if it was the window focused last, a dialog hands that over to the
-    // member of the scratchpad it belongs to, and any other window clears it.
+    // nearest window of the scratchpad it was opened from, and any other window clears it.
     void forgetLastFocused(Scratchpad& scratchpad, std::string_view name, const View* view) const;
     enum class Admission { Interactive, Automatic };
     bool admit(
