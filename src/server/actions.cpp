@@ -1898,7 +1898,8 @@ namespace umbriel {
       return scratchpad != nullptr && scratchpad->toggle(*name, output);
     }
 
-    template <int Direction> bool actionScratchpadShowStep(Server& server, const Keybind& bind, std::string* error) {
+    template <int Direction>
+    bool actionScratchpadWindowShowStep(Server& server, const Keybind& bind, std::string* error) {
       const auto name = scratchpadName(server, bind, error);
       Output* output = server.outputFromWlr(server.preferredOutput());
       if (!name || output == nullptr) {
@@ -2197,8 +2198,8 @@ namespace umbriel {
         &actionColumnTabBar<-1>,
         &actionColumnTabBar<1>,
         &actionColumnTabBar<0>,
-        &actionScratchpadShowStep<1>,
-        &actionScratchpadShowStep<-1>,
+        &actionScratchpadWindowShowStep<1>,
+        &actionScratchpadWindowShowStep<-1>,
     };
 
     consteval bool everyActionHasHandler() {

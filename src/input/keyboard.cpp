@@ -425,8 +425,8 @@ namespace umbriel {
     const int32_t delay = m_keyboard->repeat_info.delay;
     const bool repeatable = bind.action != KeybindAction::ScratchpadToggle
         && bind.action != KeybindAction::ScratchpadFocusNext
-        && bind.action != KeybindAction::ScratchpadShowNext
-        && bind.action != KeybindAction::ScratchpadShowPrevious;
+        && bind.action != KeybindAction::ScratchpadWindowShowNext
+        && bind.action != KeybindAction::ScratchpadWindowShowPrevious;
     if (!bind.repeat || !repeatable || rate <= 0 || delay <= 0) {
       cancelRepeat();
       return;

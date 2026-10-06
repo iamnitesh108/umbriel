@@ -73,7 +73,7 @@ spawn outputs-red 0xFFFF0000
 spawn outputs-green 0xFF00FF00
 "$UMBRIEL" msg window-move-to-scratchpad > /dev/null
 
-"$UMBRIEL" msg scratchpad-show-next > /dev/null
+"$UMBRIEL" msg scratchpad-window-show-next > /dev/null
 first=$(shown)
 if [[ $first != red && $first != green ]]; then
   echo "the scratchpad did not show exactly one window: [$first]"

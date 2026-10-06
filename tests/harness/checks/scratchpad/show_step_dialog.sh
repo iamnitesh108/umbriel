@@ -95,7 +95,7 @@ wait_for_window dialog-other
 "$UMBRIEL" msg window-move-to-scratchpad > /dev/null
 
 # The parent was focused last, so the first step shows it on its own.
-"$UMBRIEL" msg scratchpad-show-next > /dev/null
+"$UMBRIEL" msg scratchpad-window-show-next > /dev/null
 expect "parent" "the scratchpad did not show the parent on its own"
 
 # Its dialog joins the scratchpad and shows beside it, centred over the parent.
@@ -106,9 +106,9 @@ wait_for_window dialog-child
 expect "green parent" "the dialog replaced its parent instead of showing beside it"
 
 # Stepping skips the dialog: it goes with its parent.
-"$UMBRIEL" msg scratchpad-show-next > /dev/null
+"$UMBRIEL" msg scratchpad-window-show-next > /dev/null
 expect "red" "stepping showed the dialog on its own or kept the parent"
-"$UMBRIEL" msg scratchpad-show-next > /dev/null
+"$UMBRIEL" msg scratchpad-window-show-next > /dev/null
 expect "green parent" "stepping back did not bring the parent and its dialog"
 
 # Closing the dialog leaves the parent on show.

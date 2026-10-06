@@ -196,8 +196,8 @@ namespace umbriel {
     ColumnToggleTabBar,
     ColumnShowTabBar,
     ColumnHideTabBar,
-    ScratchpadShowNext,
-    ScratchpadShowPrevious,
+    ScratchpadWindowShowNext,
+    ScratchpadWindowShowPrevious,
     Count,
   };
 

@@ -58,9 +58,9 @@ for _ in $(seq 80); do
   sleep 0.05
 done
 "$UMBRIEL" msg window-move-to-scratchpad:a > /dev/null
-"$UMBRIEL" msg scratchpad-show-next:a > /dev/null
+"$UMBRIEL" msg scratchpad-window-show-next:a > /dev/null
 if [[ $(windows | jq -r '.[] | select(.active) | .title') != moving-window ]]; then
-  "$UMBRIEL" msg scratchpad-show-next:a > /dev/null
+  "$UMBRIEL" msg scratchpad-window-show-next:a > /dev/null
 fi
 if [[ $(dimmed) != 1 ]]; then
   echo "scratchpad a did not open with its window: $(windows)"
@@ -88,7 +88,7 @@ for _ in $(seq 80); do
   [[ -z "$(field_of moved-out id)" ]] && break
   sleep 0.05
 done
-"$UMBRIEL" msg scratchpad-show-next:a > /dev/null
+"$UMBRIEL" msg scratchpad-window-show-next:a > /dev/null
 if [[ $(windows | jq -r '.[] | select(.active) | .title') != staying-window ]]; then
   echo "stepping through a did not reach the window still in it: $(windows)"
   exit 1

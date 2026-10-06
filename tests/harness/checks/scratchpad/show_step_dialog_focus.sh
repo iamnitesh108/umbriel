@@ -76,13 +76,13 @@ if [[ $(window_of focus-dialog | jq -r .scratchpad) != default ]]; then
 fi
 
 focus_dialog
-"$UMBRIEL" msg scratchpad-show-next > /dev/null
+"$UMBRIEL" msg scratchpad-window-show-next > /dev/null
 expect_active focus-last "next from the middle member's dialog"
 
 "$UMBRIEL" msg scratchpad-toggle > /dev/null
 "$UMBRIEL" msg scratchpad-toggle > /dev/null
 focus_dialog
-"$UMBRIEL" msg scratchpad-show-previous > /dev/null
+"$UMBRIEL" msg scratchpad-window-show-previous > /dev/null
 expect_active focus-first "previous from the middle member's dialog"
 
 # Hidden with the dialog focused, the scratchpad shows the dialog's parent again.
@@ -90,7 +90,7 @@ expect_active focus-first "previous from the middle member's dialog"
 "$UMBRIEL" msg scratchpad-toggle > /dev/null
 focus_dialog
 "$UMBRIEL" msg scratchpad-toggle > /dev/null
-"$UMBRIEL" msg scratchpad-show-next > /dev/null
+"$UMBRIEL" msg scratchpad-window-show-next > /dev/null
 expect_active focus-parent "showing a scratchpad hidden while a dialog had focus"
 
 # With the parent shown on its own, focus moves on from its focused dialog rather than staying there.
@@ -112,7 +112,7 @@ if [[ -n "$(window_of focus-dialog)" ]]; then
   echo "the dialog did not close: $(windows)"
   exit 1
 fi
-"$UMBRIEL" msg scratchpad-show-next > /dev/null
+"$UMBRIEL" msg scratchpad-window-show-next > /dev/null
 expect_active focus-parent "showing a scratchpad whose focused dialog closed while it was hidden"
 
 # Restoring with a dialog of the window on show focused takes out the dialog and keeps its parent stored.

@@ -103,7 +103,7 @@ expect "red green parent" "every window and the dialog did not show"
 
 # Step to the red window, hiding the parent and its dialog.
 "$UMBRIEL" msg "window-focus:$(window_of activate-parent | jq -r .id)" > /dev/null
-"$UMBRIEL" msg scratchpad-show-next > /dev/null
+"$UMBRIEL" msg scratchpad-window-show-next > /dev/null
 expect "red" "stepping from the parent did not show the red window on its own"
 
 # Focusing the hidden dialog brings its parent along.

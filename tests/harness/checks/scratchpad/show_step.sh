@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# scratchpad-show-next / scratchpad-show-previous show one scratchpad window at a time and cycle through the rest,
-# wrapping at the ends. From every window shown, they keep the one after the focused window. scratchpad-toggle hides
-# the pad however it was shown, window-focus shows the window it names, and closing the window on show hides the pad.
-# A window a default_focused rule brings in is shown in place of the one on show.
+# scratchpad-window-show-next / scratchpad-window-show-previous show one scratchpad window at a time and cycle through
+# the rest, wrapping at the ends. From every window shown, they keep the one after the focused window.
+# scratchpad-toggle hides the pad however it was shown, window-focus shows the window it names, and closing the window
+# on show hides the pad. A window a default_focused rule brings in is shown in place of the one on show.
 set -euo pipefail
 
 readonly CLIENT="${UMBRIEL_UNMAP_CLIENT:-./build-debug/tests/unmap-client}"
@@ -91,11 +91,11 @@ blue_pid=$!
 expect "" ""
 
 # One at a time, in order, wrapping at both ends.
-expect scratchpad-show-next red
-expect scratchpad-show-next green
-expect scratchpad-show-next blue
-expect scratchpad-show-next red
-expect scratchpad-show-previous blue
+expect scratchpad-window-show-next red
+expect scratchpad-window-show-next green
+expect scratchpad-window-show-next blue
+expect scratchpad-window-show-next red
+expect scratchpad-window-show-previous blue
 
 # scratchpad-toggle hides a pad showing one window, and shows every window again. They open centred on each other, so
 # two are dragged aside to show all three at once; dragging a scratchpad window keeps it in the scratchpad.
@@ -113,7 +113,7 @@ case $focused in
   pad-green) after=blue ;;
   *) after=red ;;
 esac
-expect scratchpad-show-next "$after"
+expect scratchpad-window-show-next "$after"
 
 # window-focus on a hidden member shows that member in place of the one on show.
 hidden=red
@@ -147,7 +147,7 @@ expect_active() {
 # A window a default_focused rule brings into a pad showing one window, on opening or on taking a matching title, is
 # shown and focused in place of the one on show.
 spawn pad-red 0xFFFF0000
-expect scratchpad-show-next red
+expect scratchpad-window-show-next red
 spawn pad-focused-open 0xFF00FF00
 expect "" green
 expect_active pad-focused-open "a default_focused rule opening a window into the pad"
@@ -169,4 +169,4 @@ done
 expect "" blue
 expect_active pad-focused-retitled "a default_focused rule taking a focused window into the pad by its new title"
 
-echo "scratchpad-show-next/previous showed one window at a time and cycled through the rest"
+echo "scratchpad-window-show-next/previous showed one window at a time and cycled through the rest"

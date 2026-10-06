@@ -198,9 +198,9 @@ multi-output behavior.
 | Action | Effect |
 |--------|--------|
 | `scratchpad-focus-next:[<scratchpad>]` | Focus the next visible scratchpad window |
-| `scratchpad-show-next:[<scratchpad>]` | Show only the next scratchpad window |
-| `scratchpad-show-previous:[<scratchpad>]` | Show only the previous scratchpad window |
 | `scratchpad-toggle:[<scratchpad>]` | Show or hide the selected scratchpad windows |
+| `scratchpad-window-show-next:[<scratchpad>]` | Show only the next scratchpad window |
+| `scratchpad-window-show-previous:[<scratchpad>]` | Show only the previous scratchpad window |
 | `window-move-to-scratchpad:[<scratchpad>]` | Move the focused window into a scratchpad |
 | `window-restore-from-scratchpad:[<scratchpad>]` | Return a scratchpad window to its saved workspace |
 | `window-toggle-scratchpad:[<scratchpad>]` | Move the focused window to or from a scratchpad |

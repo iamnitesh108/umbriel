@@ -82,7 +82,7 @@ shown() {
 FILL_COLOR=0xFF00FF00 "$CLIENT" transfer-green 300 200 > "$UMBRIEL_RUNTIME_DIR/transfer-green.log" 2>&1 &
 wait_for_window transfer-green
 "$UMBRIEL" msg window-move-to-scratchpad:b > /dev/null
-"$UMBRIEL" msg scratchpad-show-next:b > /dev/null
+"$UMBRIEL" msg scratchpad-window-show-next:b > /dev/null
 
 # Scratchpad a shows its red window on its own, focused, on the left output.
 "$POINTER" 2560 720 move 640 360
@@ -92,7 +92,7 @@ FILL_COLOR=0xFFFF0000 TITLE_AFTER_MAP=moved-out "$CLIENT" transfer-red 300 200 \
   < "$CONTROL" > "$RED_LOG" 2>&1 &
 wait_for_window transfer-red
 "$UMBRIEL" msg window-move-to-scratchpad:a > /dev/null
-"$UMBRIEL" msg scratchpad-show-next:a > /dev/null
+"$UMBRIEL" msg scratchpad-window-show-next:a > /dev/null
 before=$(shown)
 if [[ $before != "red green" ]]; then
   echo "both scratchpads did not show their window: [$before]: $(windows)"

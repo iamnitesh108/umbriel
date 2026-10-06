@@ -427,8 +427,8 @@ namespace {
     case A::WindowToggleScratchpad:
     case A::ScratchpadToggle:
     case A::ScratchpadFocusNext:
-    case A::ScratchpadShowNext:
-    case A::ScratchpadShowPrevious:
+    case A::ScratchpadWindowShowNext:
+    case A::ScratchpadWindowShowPrevious:
       return Group::Scratchpad;
     case A::WorkspaceSwitch:
     case A::ColumnMoveToWorkspace:
