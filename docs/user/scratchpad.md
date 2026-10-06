@@ -46,7 +46,8 @@ time instead, bind `scratchpad-show-next` and `scratchpad-show-previous`:
   the window after or before the focused one.
 - `scratchpad-toggle` hides the scratchpad whichever way it was shown.
 - A window moved into the scratchpad while it shows one window becomes the one
-  on show. Closing or restoring the window on show hides the scratchpad.
+  on show, as does one a `default_focused` rule brings in. Closing or restoring
+  the window on show hides the scratchpad.
 
 Both styles work on the same scratchpad, so each binding can pick the one it
 wants.
