@@ -71,6 +71,7 @@ namespace {
               .applications = {path("applications")},
               .themes = {path("icons")},
               .pixmaps = {path("pixmaps")},
+              .proc = path("proc"),
           },
           theme,
       };
@@ -88,14 +89,14 @@ UMBRIEL_TEST(desktopEntryNamesTheIcon) {
   tree.desktop("org.example.App", "example-icon");
   const auto icon = tree.write("icons/hicolor/48x48/apps/example-icon.png");
   tree.write("icons/hicolor/48x48/apps/org.example.App.png");
-  CHECK_EQ(tree.lookup().find("org.example.App", 48), icon);
+  CHECK_EQ(tree.lookup().find("org.example.App", 0, 48), icon);
 }
 
 UMBRIEL_TEST(appIdNamesTheIconWithoutADesktopEntry) {
   const IconTree tree("app-id");
   tree.theme("hicolor", {"48x48/apps:48:Threshold:Applications"});
   const auto icon = tree.write("icons/hicolor/48x48/apps/example.png");
-  CHECK_EQ(tree.lookup().find("example", 48), icon);
+  CHECK_EQ(tree.lookup().find("example", 0, 48), icon);
 }
 
 UMBRIEL_TEST(lowercaseAppIdFindsTheDesktopEntry) {
@@ -103,14 +104,14 @@ UMBRIEL_TEST(lowercaseAppIdFindsTheDesktopEntry) {
   tree.theme("hicolor", {"48x48/apps:48:Threshold:Applications"});
   tree.desktop("example", "example-icon");
   const auto icon = tree.write("icons/hicolor/48x48/apps/example-icon.png");
-  CHECK_EQ(tree.lookup().find("Example", 48), icon);
+  CHECK_EQ(tree.lookup().find("Example", 0, 48), icon);
 }
 
 UMBRIEL_TEST(absoluteIconPathIsUsedAsIs) {
   const IconTree tree("absolute");
   const auto icon = tree.write("elsewhere/example.png");
   tree.desktop("example", icon.string());
-  CHECK_EQ(tree.lookup().find("example", 48), icon);
+  CHECK_EQ(tree.lookup().find("example", 0, 48), icon);
 }
 
 UMBRIEL_TEST(closestSizeWinsAndTiesPreferLarger) {
@@ -123,9 +124,9 @@ UMBRIEL_TEST(closestSizeWinsAndTiesPreferLarger) {
   tree.write("icons/hicolor/16x16/apps/example.png");
   const auto small = tree.write("icons/hicolor/32x32/apps/example.png");
   const auto large = tree.write("icons/hicolor/64x64/apps/example.png");
-  CHECK_EQ(tree.lookup().find("example", 30), small);
-  CHECK_EQ(tree.lookup().find("example", 48), large);
-  CHECK_EQ(tree.lookup().find("example", 128), large);
+  CHECK_EQ(tree.lookup().find("example", 0, 30), small);
+  CHECK_EQ(tree.lookup().find("example", 0, 48), large);
+  CHECK_EQ(tree.lookup().find("example", 0, 128), large);
 }
 
 UMBRIEL_TEST(onlyApplicationDirectoriesAreSearched) {
@@ -133,7 +134,7 @@ UMBRIEL_TEST(onlyApplicationDirectoriesAreSearched) {
   tree.theme("hicolor", {"48x48/devices:48:Threshold:Devices", "32x32/apps:32:Threshold:Applications"});
   tree.write("icons/hicolor/48x48/devices/example.png");
   const auto icon = tree.write("icons/hicolor/32x32/apps/example.png");
-  CHECK_EQ(tree.lookup().find("example", 48), icon);
+  CHECK_EQ(tree.lookup().find("example", 0, 48), icon);
 }
 
 UMBRIEL_TEST(themeAndItsParentsComeBeforeHicolor) {
@@ -147,31 +148,31 @@ UMBRIEL_TEST(themeAndItsParentsComeBeforeHicolor) {
   const auto inherited = tree.write("icons/parent/48x48/apps/second.png");
   const auto fallback = tree.write("icons/hicolor/48x48/apps/third.png");
   AppIconLookup lookup = tree.lookup("child");
-  CHECK_EQ(lookup.find("first", 48), own);
-  CHECK_EQ(lookup.find("second", 48), inherited);
-  CHECK_EQ(lookup.find("third", 48), fallback);
+  CHECK_EQ(lookup.find("first", 0, 48), own);
+  CHECK_EQ(lookup.find("second", 0, 48), inherited);
+  CHECK_EQ(lookup.find("third", 0, 48), fallback);
 }
 
 UMBRIEL_TEST(pixmapsAreTheLastResort) {
   const IconTree tree("pixmaps");
   const auto icon = tree.write("pixmaps/example.png");
-  CHECK_EQ(tree.lookup().find("example", 48), icon);
+  CHECK_EQ(tree.lookup().find("example", 0, 48), icon);
 }
 
 UMBRIEL_TEST(namesNeverLeaveTheirDirectory) {
   const IconTree tree("escape");
   tree.write("example.png");
   tree.write("applications/example.desktop", "[Desktop Entry]\nIcon=../example\n");
-  CHECK(tree.lookup().find("../example", 48).empty());
-  CHECK(tree.lookup().find("example", 48).empty());
-  CHECK(tree.lookup("../icons").find("example", 48).empty());
+  CHECK(tree.lookup().find("../example", 0, 48).empty());
+  CHECK(tree.lookup().find("example", 0, 48).empty());
+  CHECK(tree.lookup("../icons").find("example", 0, 48).empty());
 }
 
 UMBRIEL_TEST(missingIconIsEmpty) {
   const IconTree tree("missing");
   tree.theme("hicolor", {"48x48/apps:48:Threshold:Applications"});
-  CHECK(tree.lookup().find("example", 48).empty());
-  CHECK(tree.lookup().find("", 48).empty());
+  CHECK(tree.lookup().find("example", 0, 48).empty());
+  CHECK(tree.lookup().find("", 0, 48).empty());
 }
 
 UMBRIEL_TEST(scalableDirectoryCoversItsSize) {
@@ -179,7 +180,7 @@ UMBRIEL_TEST(scalableDirectoryCoversItsSize) {
   tree.theme("hicolor", {"16x16/apps:16:Threshold:Applications", "scalable/apps:48:Scalable:Applications"});
   tree.write("icons/hicolor/16x16/apps/example.png");
   const auto icon = tree.write("icons/hicolor/scalable/apps/example.png");
-  CHECK_EQ(tree.lookup().find("example", 48), icon);
+  CHECK_EQ(tree.lookup().find("example", 0, 48), icon);
 }
 
 UMBRIEL_TEST(startupWmClassFindsTheDesktopEntry) {
@@ -192,8 +193,8 @@ UMBRIEL_TEST(startupWmClassFindsTheDesktopEntry) {
   const auto icon = tree.write("icons/hicolor/48x48/apps/example-icon.png");
   tree.write("icons/hicolor/48x48/apps/other-icon.png");
   AppIconLookup lookup = tree.lookup();
-  CHECK_EQ(lookup.find("example", 48), icon);
-  CHECK(lookup.find("unrelated", 48).empty());
+  CHECK_EQ(lookup.find("example", 0, 48), icon);
+  CHECK(lookup.find("unrelated", 0, 48).empty());
 }
 
 UMBRIEL_TEST(desktopEntryNamedAfterAppIdBeatsStartupWmClass) {
@@ -203,7 +204,7 @@ UMBRIEL_TEST(desktopEntryNamedAfterAppIdBeatsStartupWmClass) {
   tree.write("applications/vendor.desktop", "[Desktop Entry]\nIcon=class-icon\nStartupWMClass=example\n");
   const auto icon = tree.write("icons/hicolor/48x48/apps/named-icon.png");
   tree.write("icons/hicolor/48x48/apps/class-icon.png");
-  CHECK_EQ(tree.lookup().find("example", 48), icon);
+  CHECK_EQ(tree.lookup().find("example", 0, 48), icon);
 }
 
 #ifdef UMBRIEL_SVG_ICONS
@@ -212,14 +213,14 @@ UMBRIEL_TEST(scalableSvgCoversItsSize) {
   tree.theme("hicolor", {"scalable/apps:48:Scalable:Applications", "16x16/apps:16:Threshold:Applications"});
   const auto icon = tree.write("icons/hicolor/scalable/apps/example.svg");
   tree.write("icons/hicolor/16x16/apps/example.png");
-  CHECK_EQ(tree.lookup().find("example", 48), icon);
+  CHECK_EQ(tree.lookup().find("example", 0, 48), icon);
 }
 
 UMBRIEL_TEST(absoluteSvgIconPathIsUsed) {
   const IconTree tree("absolute-svg");
   const auto icon = tree.write("elsewhere/example.svg");
   tree.desktop("example", icon.string());
-  CHECK_EQ(tree.lookup().find("example", 48), icon);
+  CHECK_EQ(tree.lookup().find("example", 0, 48), icon);
 }
 #else
 UMBRIEL_TEST(svgIconsAreSkipped) {
@@ -227,8 +228,130 @@ UMBRIEL_TEST(svgIconsAreSkipped) {
   tree.theme("hicolor", {"scalable/apps:48:Scalable:Applications", "16x16/apps:16:Threshold:Applications"});
   tree.write("icons/hicolor/scalable/apps/example.svg");
   const auto icon = tree.write("icons/hicolor/16x16/apps/example.png");
-  CHECK_EQ(tree.lookup().find("example", 48), icon);
+  CHECK_EQ(tree.lookup().find("example", 0, 48), icon);
 }
 #endif
+
+UMBRIEL_TEST(reverseDnsTailFindsTheDesktopEntry) {
+  const IconTree tree("tail");
+  tree.theme("hicolor", {"48x48/apps:48:Threshold:Applications"});
+  // Obsidian's entry: neither its desktop ID nor its StartupWMClass is the app id it reports.
+  tree.write("applications/obsidian.desktop", "[Desktop Entry]\nIcon=obsidian-icon\nStartupWMClass=md.Obsidian\n");
+  const auto icon = tree.write("icons/hicolor/48x48/apps/obsidian-icon.png");
+  CHECK_EQ(tree.lookup().find("md.obsidian.Obsidian", 0, 48), icon);
+}
+
+UMBRIEL_TEST(reverseDnsTailMatchesStartupWmClass) {
+  const IconTree tree("tail-class");
+  tree.theme("hicolor", {"48x48/apps:48:Threshold:Applications"});
+  tree.write("applications/vendor.desktop", "[Desktop Entry]\nIcon=vendor-icon\nStartupWMClass=Tool\n");
+  const auto icon = tree.write("icons/hicolor/48x48/apps/vendor-icon.png");
+  CHECK_EQ(tree.lookup().find("com.example.Tool", 0, 48), icon);
+}
+
+UMBRIEL_TEST(execProgramFindsTheDesktopEntry) {
+  const IconTree tree("exec");
+  tree.theme("hicolor", {"48x48/apps:48:Threshold:Applications"});
+  tree.write(
+      "applications/vendor-browser-1.desktop",
+      "[Desktop Entry]\nIcon=browser-icon\nExec=env A=1 /opt/b/Browser --x %U\n"
+  );
+  tree.write(
+      "applications/vendor-wrapped-2.desktop",
+      "[Desktop Entry]\nIcon=wrapped-icon\nExec=\"/opt/with space/wrapped\" %F\n"
+  );
+  tree.write(
+      "applications/vendor-sandboxed-3.desktop",
+      "[Desktop Entry]\nIcon=sandboxed-icon\nExec=flatpak run --branch=stable org.example.Sandboxed\n"
+  );
+  const auto browser = tree.write("icons/hicolor/48x48/apps/browser-icon.png");
+  const auto wrapped = tree.write("icons/hicolor/48x48/apps/wrapped-icon.png");
+  const auto sandboxed = tree.write("icons/hicolor/48x48/apps/sandboxed-icon.png");
+  AppIconLookup lookup = tree.lookup();
+  CHECK_EQ(lookup.find("browser", 0, 48), browser);
+  CHECK_EQ(lookup.find("wrapped", 0, 48), wrapped);
+  CHECK_EQ(lookup.find("org.example.Sandboxed", 0, 48), sandboxed);
+}
+
+UMBRIEL_TEST(nameFindsTheDesktopEntry) {
+  const IconTree tree("name");
+  tree.theme("hicolor", {"48x48/apps:48:Threshold:Applications"});
+  tree.write("applications/x-1.desktop", "[Desktop Entry]\nName=Notes\nIcon=notes-icon\nExec=/opt/x/run\n");
+  const auto icon = tree.write("icons/hicolor/48x48/apps/notes-icon.png");
+  CHECK_EQ(tree.lookup().find("notes", 0, 48), icon);
+}
+
+UMBRIEL_TEST(strongerRuleWinsOverEarlierEntry) {
+  const IconTree tree("rules");
+  tree.theme("hicolor", {"48x48/apps:48:Threshold:Applications"});
+  // `a-name` only shares the Name, `z-class` shares the StartupWMClass: the class match wins despite sorting later.
+  tree.write("applications/a-name.desktop", "[Desktop Entry]\nName=Tool\nIcon=by-name\n");
+  tree.write("applications/z-class.desktop", "[Desktop Entry]\nStartupWMClass=tool\nIcon=by-class\n");
+  tree.write("icons/hicolor/48x48/apps/by-name.png");
+  const auto icon = tree.write("icons/hicolor/48x48/apps/by-class.png");
+  CHECK_EQ(tree.lookup().find("tool", 0, 48), icon);
+}
+
+UMBRIEL_TEST(shownEntryWinsOverNoDisplayAndHiddenIsSkipped) {
+  const IconTree tree("visibility");
+  tree.theme("hicolor", {"48x48/apps:48:Threshold:Applications"});
+  tree.write("applications/a-handler.desktop", "[Desktop Entry]\nExec=editor\nIcon=handler\nNoDisplay=true\n");
+  tree.write("applications/b-removed.desktop", "[Desktop Entry]\nExec=editor\nIcon=removed\nHidden=true\n");
+  tree.write("applications/c-editor.desktop", "[Desktop Entry]\nExec=editor\nIcon=editor-icon\n");
+  tree.write("applications/d-helper.desktop", "[Desktop Entry]\nExec=helper\nIcon=helper-icon\nNoDisplay=true\n");
+  tree.write("icons/hicolor/48x48/apps/handler.png");
+  tree.write("icons/hicolor/48x48/apps/removed.png");
+  const auto editor = tree.write("icons/hicolor/48x48/apps/editor-icon.png");
+  const auto helper = tree.write("icons/hicolor/48x48/apps/helper-icon.png");
+  AppIconLookup lookup = tree.lookup();
+  CHECK_EQ(lookup.find("editor", 0, 48), editor);
+  CHECK_EQ(lookup.find("helper", 0, 48), helper);
+}
+
+UMBRIEL_TEST(subdirectoryEntriesUseTheirDesktopId) {
+  const IconTree tree("subdir");
+  tree.theme("hicolor", {"48x48/apps:48:Threshold:Applications"});
+  tree.write("applications/kde/viewer.desktop", "[Desktop Entry]\nIcon=viewer-icon\n");
+  const auto icon = tree.write("icons/hicolor/48x48/apps/viewer-icon.png");
+  CHECK_EQ(tree.lookup().find("kde-viewer", 0, 48), icon);
+}
+
+UMBRIEL_TEST(flatpakProcessFindsItsEntry) {
+  const IconTree tree("flatpak");
+  tree.theme("hicolor", {"48x48/apps:48:Threshold:Applications"});
+  tree.write("applications/org.example.Real.desktop", "[Desktop Entry]\nIcon=real-icon\n");
+  tree.write("proc/42/root/.flatpak-info", "[Application]\nname=org.example.Real\nruntime=x\n");
+  const auto icon = tree.write("icons/hicolor/48x48/apps/real-icon.png");
+  AppIconLookup lookup = tree.lookup();
+  CHECK_EQ(lookup.find("unrelated", 42, 48), icon);
+  CHECK(lookup.find("unrelated", 43, 48).empty());
+}
+
+UMBRIEL_TEST(snapProcessFindsItsEntry) {
+  const IconTree tree("snap");
+  tree.theme("hicolor", {"48x48/apps:48:Threshold:Applications"});
+  tree.write("applications/browser_browser.desktop", "[Desktop Entry]\nIcon=snap-icon\n");
+  tree.write("proc/7/attr/current", "snap.browser.browser (enforce)\n");
+  const auto icon = tree.write("icons/hicolor/48x48/apps/snap-icon.png");
+  CHECK_EQ(tree.lookup().find("unrelated", 7, 48), icon);
+}
+
+UMBRIEL_TEST(iconWithExtensionIsFound) {
+  const IconTree tree("extension");
+  tree.theme("hicolor", {"48x48/apps:48:Threshold:Applications"});
+  tree.desktop("example", "example-icon.png");
+  const auto icon = tree.write("icons/hicolor/48x48/apps/example-icon.png");
+  CHECK_EQ(tree.lookup().find("example", 0, 48), icon);
+}
+
+UMBRIEL_TEST(themeWithoutIndexUsesItsSizeDirectories) {
+  const IconTree tree("no-index");
+  tree.write("icons/hicolor/32x32/apps/example.png");
+  const auto icon = tree.write("icons/hicolor/48x48/apps/example.png");
+  tree.write("icons/hicolor/48x48/mimetypes/other.png");
+  AppIconLookup lookup = tree.lookup();
+  CHECK_EQ(lookup.find("example", 0, 48), icon);
+  CHECK(lookup.find("other", 0, 48).empty());
+}
 
 int main() { return RUN_TESTS(); }

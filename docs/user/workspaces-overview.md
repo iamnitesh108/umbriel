@@ -90,13 +90,23 @@ beside the shortcut label. With `shortcuts = false` the badge shows only the
 icon. While a key sequence is pending, a card whose label no longer matches
 keeps its icon and drops the label.
 
-Umbriel finds the icon through the window's desktop entry: the one named after
-its app ID or, failing that, the one whose `StartupWMClass` matches it. The
-icon is looked up in `icon_theme`, the themes it inherits, and `hicolor`, then
-in `pixmaps` directories. PNG and SVG icons are used; a build without SVG
-support uses PNG icons only. Each application is looked up once per session and
-decoded only while the overview is open. With `app_icons = false` no icon is
-looked up or loaded.
+Umbriel finds the icon through the window's desktop entry, ignoring case. It
+takes the first entry that matches, in this order:
+
+1. The entry's desktop ID or `StartupWMClass` is the window's app ID.
+2. The entry belongs to the Flatpak or Snap app the window's process runs.
+3. For a reverse-DNS app ID such as `md.obsidian.Obsidian`, the entry's desktop
+   ID or `StartupWMClass` is its last part, `obsidian`.
+4. The program in the entry's `Exec`, or its `Name`, is the app ID or that last
+   part.
+
+An entry shown in menus is preferred over a `NoDisplay` one, and `Hidden`
+entries are ignored. The entry's icon is looked up in `icon_theme`, the themes
+it inherits, and `hicolor`, then in `pixmaps` directories; when the entry names
+none that exists, the app ID itself is tried as an icon name. PNG and SVG icons
+are used; a build without SVG support uses PNG icons only. Each application is
+looked up once per session and decoded only while the overview is open. With
+`app_icons = false` no icon is looked up or loaded.
 
 #### Badge placement
 

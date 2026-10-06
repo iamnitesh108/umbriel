@@ -5,10 +5,12 @@
 #include <charconv>
 #include <cstdlib>
 #include <fstream>
+#include <functional>
 #include <iterator>
 #include <limits>
 #include <system_error>
 #include <unordered_map>
+#include <unordered_set>
 
 namespace umbriel {
 
@@ -94,6 +96,11 @@ namespace umbriel {
       return std::filesystem::is_regular_file(path, error);
     }
 
+    bool isDirectory(const std::filesystem::path& path) {
+      std::error_code error;
+      return std::filesystem::is_directory(path, error);
+    }
+
     bool decodable(const std::filesystem::path& path) {
       return std::ranges::find(kExtensions, path.extension().string()) != std::end(kExtensions);
     }
@@ -110,6 +117,96 @@ namespace umbriel {
         }
       }
       return {};
+    }
+
+    // An Icon value names an icon without its extension, but some entries spell one out.
+    std::string iconName(std::string_view icon) {
+      for (const std::string_view extension : {".png", ".svg", ".xpm"}) {
+        if (!icon.starts_with('/') && icon.size() > extension.size() && icon.ends_with(extension)) {
+          return std::string(icon.substr(0, icon.size() - extension.size()));
+        }
+      }
+      return std::string(icon);
+    }
+
+    // The words of an Exec line, with double quotes removed.
+    std::vector<std::string> execWords(std::string_view exec) {
+      std::vector<std::string> words;
+      std::string word;
+      bool quoted = false;
+      bool started = false;
+      for (const char c : exec) {
+        if (c == '"') {
+          quoted = !quoted;
+          started = true;
+        } else if (!quoted && (c == ' ' || c == '\t')) {
+          if (started) {
+            words.push_back(std::move(word));
+            word.clear();
+            started = false;
+          }
+        } else {
+          word.push_back(c);
+          started = true;
+        }
+      }
+      if (started) {
+        words.push_back(std::move(word));
+      }
+      return words;
+    }
+
+    // The program an Exec line runs, lowercased, past `env` and its assignments, or the app `flatpak run` starts.
+    std::string execProgram(std::string_view exec) {
+      const std::vector<std::string> words = execWords(exec);
+      size_t index = 0;
+      if (index < words.size() && std::filesystem::path(words[index]).filename() == "env") {
+        ++index;
+        while (index < words.size() && (words[index].contains('=') || words[index].starts_with('-'))) {
+          ++index;
+        }
+      }
+      if (index >= words.size()) {
+        return {};
+      }
+      std::string program = std::filesystem::path(words[index]).filename().string();
+      if (program == "flatpak" && index + 1 < words.size() && words[index + 1] == "run") {
+        const auto app = std::find_if(
+            words.begin() + static_cast<std::ptrdiff_t>(index) + 2, words.end(),
+            [](const std::string& word) { return !word.starts_with('-'); }
+        );
+        return app == words.end() ? std::string{} : lowercase(*app);
+      }
+      return lowercase(program);
+    }
+
+    // `<width>x<height>` or `<width>x<height>@<scale>`, the names of a theme's size directories.
+    std::optional<std::pair<int, int>> sizeDirectory(std::string_view name) {
+      int size = 0;
+      int height = 0;
+      int scale = 1;
+      const char* end = name.data() + name.size();
+      auto parsed = std::from_chars(name.data(), end, size);
+      if (parsed.ec != std::errc{} || parsed.ptr == end || *parsed.ptr != 'x') {
+        return std::nullopt;
+      }
+      parsed = std::from_chars(parsed.ptr + 1, end, height);
+      if (parsed.ec != std::errc{} || height != size) {
+        return std::nullopt;
+      }
+      if (parsed.ptr != end) {
+        if (*parsed.ptr != '@') {
+          return std::nullopt;
+        }
+        parsed = std::from_chars(parsed.ptr + 1, end, scale);
+        if (parsed.ec != std::errc{} || parsed.ptr != end) {
+          return std::nullopt;
+        }
+      }
+      if (size <= 0 || scale <= 0) {
+        return std::nullopt;
+      }
+      return std::pair{size, scale};
     }
 
     std::filesystem::path envPath(const char* name) {
@@ -170,23 +267,46 @@ namespace umbriel {
     Theme theme;
     std::filesystem::path index;
     for (const std::filesystem::path& base : m_paths.themes) {
-      std::error_code error;
-      if (std::filesystem::is_directory(base / name, error)) {
+      if (isDirectory(base / name)) {
         theme.roots.push_back(base / name);
         if (index.empty() && isFile(base / name / "index.theme")) {
           index = base / name / "index.theme";
         }
       }
     }
-    if (index.empty()) {
+    if (theme.roots.empty()) {
       return;
     }
 
-    const auto groups = readKeyFile(index);
+    const auto groups = index.empty() ? std::unordered_map<std::string, Group>{} : readKeyFile(index);
     const auto header = groups.find("Icon Theme");
     if (header == groups.end()) {
+      // Without an index, as when only applications installed into hicolor, the size directories name themselves.
+      for (const std::filesystem::path& root : theme.roots) {
+        std::error_code error;
+        for (std::filesystem::directory_iterator entry(root, error), end; !error && entry != end;
+             entry.increment(error)) {
+          const std::string sizeName = entry->path().filename().string();
+          const std::string path = sizeName + "/apps";
+          if (!isDirectory(root / path) || std::ranges::any_of(theme.directories, [&](const Directory& directory) {
+                return directory.path == path;
+              })) {
+            continue;
+          }
+          if (sizeName == "scalable") {
+            theme.directories.push_back(
+                {.path = path, .type = Directory::Type::Scalable, .size = 48, .minSize = 1, .maxSize = 512}
+            );
+          } else if (const auto size = sizeDirectory(sizeName)) {
+            const int pixels = size->first * size->second;
+            theme.directories.push_back({.path = path, .size = pixels, .minSize = pixels, .maxSize = pixels});
+          }
+        }
+      }
+      m_themes.push_back(std::move(theme));
       return;
     }
+
     std::vector<std::string> names = split(value(header->second, "Directories"));
     std::ranges::move(split(value(header->second, "ScaledDirectories")), std::back_inserter(names));
     for (std::string& path : names) {
@@ -220,65 +340,143 @@ namespace umbriel {
     }
   }
 
-  std::vector<std::string> AppIconLookup::iconNames(std::string_view appId) {
-    std::vector<std::string> ids{std::string(appId)};
-    if (std::string lower = lowercase(appId); lower != ids.front()) {
-      ids.push_back(std::move(lower));
+  const std::vector<AppIconLookup::DesktopEntry>& AppIconLookup::desktopEntries() {
+    if (m_entries) {
+      return *m_entries;
     }
-
-    std::vector<std::string> names;
-    for (const std::string& id : ids) {
-      for (const std::filesystem::path& dir : m_paths.applications) {
-        const std::filesystem::path entry = dir / (id + ".desktop");
-        if (!isFile(entry)) {
+    m_entries.emplace();
+    // A desktop ID found in an earlier directory shadows the same ID later on, even when that entry is hidden.
+    std::unordered_set<std::string> seen;
+    for (const std::filesystem::path& dir : m_paths.applications) {
+      std::vector<std::pair<std::string, std::filesystem::path>> files;
+      std::error_code error;
+      for (std::filesystem::recursive_directory_iterator entry(dir, error), end; !error && entry != end;
+           entry.increment(error)) {
+        if (entry->path().extension() != ".desktop") {
           continue;
         }
-        const auto groups = readKeyFile(entry);
-        if (const auto group = groups.find("Desktop Entry"); group != groups.end()) {
-          if (const std::string_view icon = value(group->second, "Icon"); !icon.empty()) {
-            names.emplace_back(icon);
-          }
+        std::string id = entry->path().lexically_relative(dir).replace_extension().string();
+        std::ranges::replace(id, '/', '-');
+        files.emplace_back(lowercase(id), entry->path());
+      }
+      std::ranges::sort(files);
+      for (const auto& [id, path] : files) {
+        if (!seen.insert(id).second) {
+          continue;
         }
-        break;
-      }
-      if (!names.empty()) {
-        break;
+        const auto groups = readKeyFile(path);
+        const auto group = groups.find("Desktop Entry");
+        if (group == groups.end()) {
+          continue;
+        }
+        const Group& keys = group->second;
+        const std::string_view type = value(keys, "Type");
+        if ((!type.empty() && type != "Application") || value(keys, "Hidden") == "true") {
+          continue;
+        }
+        m_entries->push_back({
+            .id = id,
+            .wmClass = lowercase(value(keys, "StartupWMClass")),
+            .exec = execProgram(value(keys, "Exec")),
+            .name = lowercase(value(keys, "Name")),
+            .icon = std::string(value(keys, "Icon")),
+            .shown = value(keys, "NoDisplay") != "true",
+        });
       }
     }
-    if (names.empty()) {
-      if (std::string icon = wmClassIcon(appId); !icon.empty()) {
-        names.push_back(std::move(icon));
-      }
-    }
-    std::ranges::move(ids, std::back_inserter(names));
-    return names;
+    return *m_entries;
   }
 
-  std::string AppIconLookup::wmClassIcon(std::string_view appId) {
-    if (!m_wmClassIcons) {
-      m_wmClassIcons.emplace();
+  std::string AppIconLookup::sandboxedAppId(pid_t pid) const {
+    const std::filesystem::path process = m_paths.proc / std::to_string(pid);
+    const auto flatpak = readKeyFile(process / "root/.flatpak-info");
+    if (const auto group = flatpak.find("Application"); group != flatpak.end()) {
+      if (const std::string_view name = value(group->second, "name"); !name.empty()) {
+        return lowercase(name);
+      }
+    }
+    // Snap confines each app under the AppArmor label `snap.<snap>.<app>`, and names its entry `<snap>_<app>`.
+    for (const char* attribute : {"attr/apparmor/current", "attr/current"}) {
+      std::ifstream file(process / attribute);
+      std::string label;
+      if (!(file >> label) || !label.starts_with("snap.")) {
+        continue;
+      }
+      const std::string_view rest = std::string_view(label).substr(5);
+      const size_t dot = rest.find('.');
+      if (dot != std::string_view::npos && dot > 0 && dot + 1 < rest.size() && !rest.substr(dot + 1).contains('.')) {
+        return lowercase(std::string(rest.substr(0, dot)) + "_" + std::string(rest.substr(dot + 1)));
+      }
+    }
+    return {};
+  }
+
+  std::optional<std::string> AppIconLookup::entryIcon(std::string_view appId, pid_t pid) {
+    // An entry named after the app id is the common case, and needs no scan of every entry.
+    for (const std::string& id : {std::string(appId), lowercase(appId)}) {
       for (const std::filesystem::path& dir : m_paths.applications) {
-        std::error_code error;
-        for (std::filesystem::directory_iterator entry(dir, error), end; !error && entry != end;
-             entry.increment(error)) {
-          if (entry->path().extension() != ".desktop") {
-            continue;
-          }
-          const auto groups = readKeyFile(entry->path());
-          const auto group = groups.find("Desktop Entry");
-          if (group == groups.end()) {
-            continue;
-          }
-          const std::string_view wmClass = value(group->second, "StartupWMClass");
-          const std::string_view icon = value(group->second, "Icon");
-          if (!wmClass.empty() && !icon.empty()) {
-            m_wmClassIcons->try_emplace(lowercase(wmClass), icon);
-          }
+        const std::filesystem::path path = dir / (id + ".desktop");
+        if (!isFile(path)) {
+          continue;
+        }
+        const auto groups = readKeyFile(path);
+        const auto group = groups.find("Desktop Entry");
+        if (group != groups.end() && value(group->second, "Hidden") != "true") {
+          return std::string(value(group->second, "Icon"));
         }
       }
     }
-    const auto icon = m_wmClassIcons->find(lowercase(appId));
-    return icon == m_wmClassIcons->end() ? std::string{} : icon->second;
+
+    const std::string id = lowercase(appId);
+    const size_t dot = id.rfind('.');
+    const std::string tail = dot == std::string::npos ? std::string{} : id.substr(dot + 1);
+    const std::string sandboxed = pid > 0 ? sandboxedAppId(pid) : std::string{};
+    const std::function<bool(const DesktopEntry&)> rules[] = {
+        [&](const DesktopEntry& entry) { return entry.id == id || entry.wmClass == id; },
+        [&](const DesktopEntry& entry) { return !sandboxed.empty() && entry.id == sandboxed; },
+        [&](const DesktopEntry& entry) { return !tail.empty() && (entry.id == tail || entry.wmClass == tail); },
+        [&](const DesktopEntry& entry) {
+          return entry.exec == id || entry.name == id || (!tail.empty() && (entry.exec == tail || entry.name == tail));
+        },
+    };
+    const std::vector<DesktopEntry>& entries = desktopEntries();
+    for (const auto& rule : rules) {
+      const DesktopEntry* hidden = nullptr;
+      for (const DesktopEntry& entry : entries) {
+        if (!rule(entry)) {
+          continue;
+        }
+        if (entry.shown) {
+          return entry.icon;
+        }
+        if (hidden == nullptr) {
+          hidden = &entry;
+        }
+      }
+      if (hidden != nullptr) {
+        return hidden->icon;
+      }
+    }
+    return std::nullopt;
+  }
+
+  std::vector<std::string> AppIconLookup::iconNames(std::string_view appId, pid_t pid) {
+    std::vector<std::string> names;
+    const auto add = [&names](std::string name) {
+      if (!name.empty() && std::ranges::find(names, name) == names.end()) {
+        names.push_back(std::move(name));
+      }
+    };
+    if (const std::optional<std::string> icon = entryIcon(appId, pid)) {
+      add(iconName(*icon));
+    }
+    add(std::string(appId));
+    const std::string lower = lowercase(appId);
+    add(lower);
+    if (const size_t dot = lower.rfind('.'); dot != std::string::npos) {
+      add(lower.substr(dot + 1));
+    }
+    return names;
   }
 
   std::filesystem::path AppIconLookup::findInTheme(const Theme& theme, std::string_view name, int size) const {
@@ -311,11 +509,11 @@ namespace umbriel {
     return best;
   }
 
-  std::filesystem::path AppIconLookup::find(std::string_view appId, int size) {
+  std::filesystem::path AppIconLookup::find(std::string_view appId, pid_t pid, int size) {
     if (!plainName(appId)) {
       return {};
     }
-    const std::vector<std::string> names = iconNames(appId);
+    const std::vector<std::string> names = iconNames(appId, pid);
     for (const std::string& name : names) {
       if (name.starts_with('/')) {
         if (decodable(name) && isFile(name)) {

@@ -1414,7 +1414,7 @@ namespace umbriel {
       if (m_iconLookup == nullptr) {
         m_iconLookup = std::make_unique<AppIconLookup>(appIconSearchPaths(), m_iconTheme);
       }
-      path = m_iconPaths.emplace(key, m_iconLookup->find(appId, size)).first;
+      path = m_iconPaths.emplace(key, m_iconLookup->find(appId, card.view->pid(), size)).first;
     }
     wlr_buffer* buffer = path->second.empty() ? nullptr : loadIconBuffer(path->second, size);
     if (!path->second.empty() && buffer == nullptr) {
