@@ -2,6 +2,7 @@
 
 #include "check.h"
 
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <string>
@@ -68,7 +69,7 @@ namespace {
     [[nodiscard]] AppIconLookup lookup(std::string_view theme = "hicolor") const {
       return {
           AppIconSearchPaths{
-              .applications = {path("applications")},
+              .applications = {path("applications"), path("system-applications")},
               .themes = {path("icons")},
               .pixmaps = {path("pixmaps")},
               .proc = path("proc"),
@@ -352,6 +353,48 @@ UMBRIEL_TEST(themeWithoutIndexUsesItsSizeDirectories) {
   AppIconLookup lookup = tree.lookup();
   CHECK_EQ(lookup.find("example", 0, 48), icon);
   CHECK(lookup.find("other", 0, 48).empty());
+}
+
+UMBRIEL_TEST(entryIconInPixmapsBeatsAppIdNamedThemeIcon) {
+  const IconTree tree("pixmap-entry");
+  tree.theme("hicolor", {"48x48/apps:48:Threshold:Applications"});
+  tree.desktop("example", "example-app");
+  tree.write("icons/hicolor/48x48/apps/example.png");
+  const auto icon = tree.write("pixmaps/example-app.png");
+  CHECK_EQ(tree.lookup().find("example", 0, 48), icon);
+}
+
+UMBRIEL_TEST(hiddenEntryShadowsTheSameIdInLaterDirectories) {
+  const IconTree tree("hidden-shadow");
+  tree.theme("hicolor", {"48x48/apps:48:Threshold:Applications"});
+  tree.write("applications/example.desktop", "[Desktop Entry]\nIcon=user-icon\nHidden=true\n");
+  tree.write("system-applications/example.desktop", "[Desktop Entry]\nIcon=system-icon\n");
+  tree.write("icons/hicolor/48x48/apps/user-icon.png");
+  tree.write("icons/hicolor/48x48/apps/system-icon.png");
+  const auto named = tree.write("icons/hicolor/48x48/apps/example.png");
+  CHECK_EQ(tree.lookup().find("example", 0, 48), named);
+}
+
+UMBRIEL_TEST(findIconTakesNamesPathsAndHomePaths) {
+  const IconTree tree("find-icon");
+  tree.theme("hicolor", {"48x48/apps:48:Threshold:Applications"});
+  const auto named = tree.write("icons/hicolor/48x48/apps/custom-name.png");
+  const auto absolute = tree.write("elsewhere/custom.png");
+  const auto home = tree.write("home/icons/custom.png");
+  tree.write("elsewhere/custom.txt");
+  const AppIconLookup lookup = tree.lookup();
+  CHECK_EQ(lookup.findIcon("custom-name", 48), named);
+  CHECK_EQ(lookup.findIcon(absolute.string(), 48), absolute);
+  const char* previousHome = std::getenv("HOME");
+  const std::string savedHome = previousHome != nullptr ? previousHome : "";
+  setenv("HOME", tree.path("home").c_str(), 1);
+  CHECK_EQ(lookup.findIcon("~/icons/custom.png", 48), home);
+  setenv("HOME", savedHome.c_str(), 1);
+  CHECK(lookup.findIcon("missing-name", 48).empty());
+  CHECK(lookup.findIcon(tree.path("elsewhere/custom.txt").string(), 48).empty());
+  CHECK(lookup.findIcon(tree.path("elsewhere/absent.png").string(), 48).empty());
+  CHECK(lookup.findIcon("../custom-name", 48).empty());
+  CHECK(lookup.findIcon("", 48).empty());
 }
 
 int main() { return RUN_TESTS(); }

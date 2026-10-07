@@ -415,6 +415,8 @@ namespace umbriel {
     std::optional<bool> defaultPinned;
     std::optional<bool> focusOnActivate;
     std::optional<bool> confinePointer;
+    // Icon for the window's overview badge: an icon name, an absolute path, or a path under ~/.
+    std::optional<std::string> overviewIcon;
     std::optional<VrrMode> vrr;
     // Overrides the client's tearing-control hint. Omitted follows the hint,
     // true forces async preference, and false vetoes it.
@@ -473,6 +475,7 @@ namespace umbriel {
           && defaultPinned == other.defaultPinned
           && focusOnActivate == other.focusOnActivate
           && confinePointer == other.confinePointer
+          && overviewIcon == other.overviewIcon
           && vrr == other.vrr
           && allowTearing == other.allowTearing
           && hdr == other.hdr
@@ -516,6 +519,7 @@ namespace umbriel {
     std::optional<bool> defaultPinned;
     std::optional<bool> focusOnActivate;
     std::optional<bool> confinePointer;
+    std::optional<std::string> overviewIcon;
     std::optional<VrrMode> vrr;
     std::optional<bool> allowTearing;
     std::optional<HdrMode> hdr;
@@ -875,6 +879,9 @@ namespace umbriel {
       std::string iconTheme = "hicolor";
       // Logical size of the application icon.
       int iconSize = 24;
+      // Icon for windows whose application has none: an icon name, an absolute path, or a path under ~/. Empty shows
+      // no icon.
+      std::string fallbackIcon;
       // Scales the alpha of colors.overview.badge_background; 0 draws no fill behind the label or icon.
       double badgeBackgroundOpacity = 1.0;
       bool operator==(const Overview&) const = default;

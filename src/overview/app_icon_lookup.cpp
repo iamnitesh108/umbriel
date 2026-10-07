@@ -350,7 +350,9 @@ namespace umbriel {
     for (const std::filesystem::path& dir : m_paths.applications) {
       std::vector<std::pair<std::string, std::filesystem::path>> files;
       std::error_code error;
-      for (std::filesystem::recursive_directory_iterator entry(dir, error), end; !error && entry != end;
+      // An unreadable subdirectory is skipped rather than ending the scan of everything after it.
+      constexpr auto kOptions = std::filesystem::directory_options::skip_permission_denied;
+      for (std::filesystem::recursive_directory_iterator entry(dir, kOptions, error), end; !error && entry != end;
            entry.increment(error)) {
         if (entry->path().extension() != ".desktop") {
           continue;
@@ -412,19 +414,24 @@ namespace umbriel {
   }
 
   std::optional<std::string> AppIconLookup::entryIcon(std::string_view appId, pid_t pid) {
-    // An entry named after the app id is the common case, and needs no scan of every entry.
+    // An entry named after the app id is the common case, and needs no scan of every entry. The first file with that
+    // name decides; a hidden or non-application one is left to the scan, which lets it shadow later directories.
     for (const std::string& id : {std::string(appId), lowercase(appId)}) {
-      for (const std::filesystem::path& dir : m_paths.applications) {
-        const std::filesystem::path path = dir / (id + ".desktop");
-        if (!isFile(path)) {
-          continue;
-        }
-        const auto groups = readKeyFile(path);
-        const auto group = groups.find("Desktop Entry");
-        if (group != groups.end() && value(group->second, "Hidden") != "true") {
-          return std::string(value(group->second, "Icon"));
-        }
+      const auto dir = std::ranges::find_if(m_paths.applications, [&id](const std::filesystem::path& candidate) {
+        return isFile(candidate / (id + ".desktop"));
+      });
+      if (dir == m_paths.applications.end()) {
+        continue;
       }
+      const auto groups = readKeyFile(*dir / (id + ".desktop"));
+      const auto group = groups.find("Desktop Entry");
+      const std::string_view type = group == groups.end() ? std::string_view{} : value(group->second, "Type");
+      if (group != groups.end()
+          && value(group->second, "Hidden") != "true"
+          && (type.empty() || type == "Application")) {
+        return std::string(value(group->second, "Icon"));
+      }
+      break;
     }
 
     const std::string id = lowercase(appId);
@@ -513,32 +520,31 @@ namespace umbriel {
     if (!plainName(appId)) {
       return {};
     }
-    const std::vector<std::string> names = iconNames(appId, pid);
-    for (const std::string& name : names) {
-      if (name.starts_with('/')) {
-        if (decodable(name) && isFile(name)) {
-          return name;
-        }
-        continue;
-      }
-      if (!plainName(name)) {
-        continue;
-      }
-      for (const Theme& theme : m_themes) {
-        if (std::filesystem::path path = findInTheme(theme, name, size); !path.empty()) {
-          return path;
-        }
-      }
-    }
-    for (const std::string& name : names) {
-      if (!plainName(name)) {
-        continue;
-      }
-      if (std::filesystem::path path = fileIn(m_paths.pixmaps, {}, name); !path.empty()) {
+    for (const std::string& name : iconNames(appId, pid)) {
+      if (std::filesystem::path path = findIcon(name, size); !path.empty()) {
         return path;
       }
     }
     return {};
+  }
+
+  std::filesystem::path AppIconLookup::findIcon(std::string_view icon, int size) const {
+    if (icon.starts_with("~/")) {
+      const std::filesystem::path home = envPath("HOME");
+      return home.empty() ? std::filesystem::path{} : findIcon((home / icon.substr(2)).string(), size);
+    }
+    if (icon.starts_with('/')) {
+      return decodable(icon) && isFile(icon) ? std::filesystem::path(icon) : std::filesystem::path{};
+    }
+    if (!plainName(icon)) {
+      return {};
+    }
+    for (const Theme& theme : m_themes) {
+      if (std::filesystem::path path = findInTheme(theme, icon, size); !path.empty()) {
+        return path;
+      }
+    }
+    return fileIn(m_paths.pixmaps, {}, icon);
   }
 
 } // namespace umbriel

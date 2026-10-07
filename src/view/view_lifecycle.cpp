@@ -536,7 +536,8 @@ namespace umbriel {
     if (m_server->scratchpadManager() != nullptr) {
       m_server->scratchpadManager()->remove(this);
     }
-    if (Overview* overview = m_server->overview(); overview != nullptr && overview->active()) {
+    // Also while closed: the overview drops a closed app's decoded icons.
+    if (Overview* overview = m_server->overview(); overview != nullptr) {
       overview->onViewUnmapped(this);
     }
     // Replacement focus can hide the closing tab. Capture while its current visibility still decides eligibility.

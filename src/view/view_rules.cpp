@@ -266,6 +266,8 @@ namespace umbriel {
 
   bool View::confinePointer() { return resolvedRules().confinePointer.value_or(false); }
 
+  std::string View::overviewIcon() { return resolvedRules().overviewIcon.value_or(std::string{}); }
+
   std::optional<bool> View::tearingRuleOverride() { return resolvedRules().allowTearing; }
 
   void View::applyWindowRules() {

@@ -229,6 +229,7 @@ namespace umbriel {
           boolean("app_icons", &O::appIcons),
           registry::text("icon_theme", &O::iconTheme),
           registry::integer("icon_size", 12, 128, &O::iconSize),
+          registry::text("fallback_icon", &O::fallbackIcon),
           badgePosition("icon_position", &O::iconPosition),
           real("badge_background_opacity", 0.0, 1.0, &O::badgeBackgroundOpacity),
       };

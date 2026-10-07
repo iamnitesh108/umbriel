@@ -40,6 +40,9 @@ namespace umbriel {
     // The PNG file, or SVG file in builds that decode SVG, closest to `size` pixels for the window with `appId` whose
     // client process is `pid` (0 when unknown), or empty when there is none.
     [[nodiscard]] std::filesystem::path find(std::string_view appId, pid_t pid, int size);
+    // The file for `icon` closest to `size` pixels: an icon name searched like an application's, an absolute path, or a
+    // path under ~/. Empty when there is no decodable file.
+    [[nodiscard]] std::filesystem::path findIcon(std::string_view icon, int size) const;
 
   private:
     struct Directory {

@@ -19,6 +19,7 @@ shortcut_position = [0.0, 0.0]
 app_icons = false
 icon_theme = "hicolor"
 icon_size = 24
+fallback_icon = ""
 icon_position = [0.5, 0.5]
 badge_background_opacity = 1.0
 ```
@@ -37,6 +38,7 @@ badge_background_opacity = 1.0
 | `app_icons` | `false` | Show each window's application icon in a badge of its own. |
 | `icon_theme` | `"hicolor"` | Icon theme for application icons; icons it lacks come from `hicolor`. |
 | `icon_size` | `24` | Application icon size in logical pixels, from 12 to 128. |
+| `fallback_icon` | `""` | Icon for windows whose application has none: an icon name, an absolute path, or `~/…`. |
 | `icon_position` | `[0.5, 0.5]` | Icon badge placement as `[x, y]` fractions from 0 to 1. |
 | `badge_background_opacity` | `1.0` | Opacity of the fill behind badges, from 0 (no fill) to 1. |
 
@@ -92,7 +94,9 @@ characters.
 #### Application icons
 
 Set `app_icons = true` to show each window's application icon. The icon and the
-shortcut label are separate badges, each with its own position and size.
+shortcut label are separate badges, each with its own position and size. A
+[window rule](window-rules.md)'s `overview_icon` replaces a window's icon, and
+`fallback_icon` covers windows whose application has none.
 
 Umbriel finds the icon through the window's desktop entry, ignoring case. It
 takes the first entry that matches, in this order:
@@ -108,8 +112,8 @@ An entry shown in menus is preferred over a `NoDisplay` one, and `Hidden`
 entries are ignored. The entry's icon is looked up in `icon_theme`, the themes
 it inherits, and `hicolor`, then in `pixmaps` directories; when the entry names
 none that exists, the app ID itself is tried as an icon name. PNG and SVG icons
-are used; a build without SVG support uses PNG icons only. Each application is
-looked up once per session and decoded only while the overview is open. With
+are used; a build without SVG support uses PNG icons only. Each icon is found
+and decoded once, then kept until its application's last window closes. With
 `app_icons = false` no icon is looked up or loaded.
 
 #### Badge placement

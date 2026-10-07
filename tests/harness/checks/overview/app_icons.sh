@@ -3,7 +3,8 @@
 # Overview cards show application icons with `app_icons`: a PNG named by the desktop entry named after the app id, and
 # an SVG named by the entry whose StartupWMClass matches it. Without `app_icons` no icon is drawn. Typing a sequence
 # that leaves a card's label unmatched hides the label and keeps the card's icon. A reload to another `icon_theme`
-# switches to that theme's icons and keeps the ones it inherits.
+# switches to that theme's icons and keeps the ones it inherits. An icon installed after an app was found without one
+# shows on the next open.
 set -euo pipefail
 
 readonly OUTPUT_W=1280
@@ -142,4 +143,28 @@ if (($(count "$YELLOW") < 400 || $(count "$GREEN") != 0 || $(count "$BLUE") < 40
   exit 1
 fi
 
-echo "overview badges draw application icons only with app_icons, keep them past an unmatched label, and follow icon_theme"
+"$UMBRIEL" msg overview-close > /dev/null
+"$UMBRIEL" clock-advance 2000
+
+# The third window's app had no icon on every open so far; one installed now shows on the next open.
+readonly CYAN='g > 0.9 && b > 0.9 && r < 0.1'
+if (($(count "$CYAN") != 0)); then
+  echo "the app without an icon drew one: cyan $(count "$CYAN")"
+  exit 1
+fi
+python3 - "$XDG_DATA_HOME/icons/hicolor/48x48/apps/harness-none.png" << 'PY'
+import struct, sys, zlib
+def chunk(kind, data):
+    return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data))
+rows = b"".join(b"\0" + b"\x00\xff\xff\xff" * 48 for _ in range(48))
+png = b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", 48, 48, 8, 6, 0, 0, 0))
+png += chunk(b"IDAT", zlib.compress(rows)) + chunk(b"IEND", b"")
+open(sys.argv[1], "wb").write(png)
+PY
+open_overview
+if (($(count "$CYAN") < 400)); then
+  echo "an icon installed after its app was first looked up never showed: cyan $(count "$CYAN")"
+  exit 1
+fi
+
+echo "overview cards draw application icons only with app_icons, keep them past an unmatched label, follow icon_theme, and pick up icons installed later"

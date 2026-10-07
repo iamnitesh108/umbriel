@@ -171,6 +171,7 @@ the windows stacked beside it in the column it joins or creates.
 | `blur_ignore_alpha` | Skip blur below an alpha threshold. |
 | `blur_optimized` | Override the global optimized-blur choice. |
 | `confine_pointer` | Keep the pointer inside this window while it has keyboard focus (default `false`). |
+| `overview_icon` | Icon for this window's overview badge: an icon name, an absolute path, or `~/…`. One that cannot be found keeps the application's own. |
 | `focus_on_activate` | Override activation focus for this window. |
 | `vrr` | Override the focused output's VRR policy. |
 | `tearing` | Request or veto asynchronous presentation. |

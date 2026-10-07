@@ -1288,6 +1288,24 @@ UMBRIEL_TEST(securityContextRulesGrantGlobalsByMetadata) {
   CHECK_EQ(umbriel::securityContextRuleGlobals(config, "org.flatpak", "org.example.Bar").size(), size_t{2});
 }
 
+UMBRIEL_TEST(overviewIconLastMatchingRuleWins) {
+  Config config;
+  const auto resolve = [&](const char* title) {
+    return umbriel::resolveWindowRules(config, "editor", title, std::nullopt, ContentType::None, {}, 0);
+  };
+  CHECK(!resolve("main").overviewIcon.has_value());
+  WindowRule app;
+  app.appIdPatterns.add("^editor$");
+  app.overviewIcon = "editor-icon";
+  config.windowRules.push_back(app);
+  WindowRule notes;
+  notes.titlePatterns.add("^notes$");
+  notes.overviewIcon = "~/notes.png";
+  config.windowRules.push_back(notes);
+  CHECK_EQ(resolve("main").overviewIcon.value_or(""), std::string{"editor-icon"});
+  CHECK_EQ(resolve("notes").overviewIcon.value_or(""), std::string{"~/notes.png"});
+}
+
 UMBRIEL_TEST(pointerConfinementLastMatchingRuleWins) {
   Config config;
   const auto resolve = [&](bool focused) {
