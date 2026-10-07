@@ -14,7 +14,7 @@ background_blur = true
 workspace_wallpaper = true
 shortcuts = true
 shortcut_keys = "1234567890"
-shortcut_size = 19
+shortcut_size = 24
 shortcut_position = [0.0, 0.0]
 app_icons = false
 icon_theme = "hicolor"
@@ -32,7 +32,7 @@ badge_background_opacity = 1.0
 | `workspace_wallpaper` | `true` | Show each output's background inside its workspace previews. |
 | `shortcuts` | `true` | Show and accept keyboard shortcut badges. |
 | `shortcut_keys` | `"1234567890"` | Preferred keys for shortcut badges. |
-| `shortcut_size` | `19` | Shortcut label text size in points, from 8 to 72. |
+| `shortcut_size` | `24` | Shortcut label text size in points, from 8 to 72. |
 | `shortcut_position` | `[0.0, 0.0]` | Shortcut badge placement as `[x, y]` fractions from 0 to 1. |
 | `app_icons` | `false` | Show each window's application icon in a badge of its own. |
 | `icon_theme` | `"hicolor"` | Icon theme for application icons; icons it lacks come from `hicolor`. |

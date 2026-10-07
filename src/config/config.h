@@ -864,7 +864,7 @@ namespace umbriel {
       // Favorite badge keys in preference order, one ASCII character each.
       std::string shortcutKeys = "1234567890";
       // Text size of the shortcut label, in points.
-      int shortcutSize = 19;
+      int shortcutSize = 24;
       // Badge placements as fractions of the room a card leaves around the badge: {0, 0} is the top-left corner,
       // {1, 1} the bottom-right, {0.5, 0.5} the center.
       std::array<double, 2> shortcutPosition{0.0, 0.0};
