@@ -2,6 +2,10 @@
 
 #include <memory>
 
+extern "C" {
+#include <wlr/util/box.h>
+}
+
 struct wlr_scene_tree;
 
 namespace umbriel {
@@ -48,6 +52,9 @@ namespace umbriel {
     }
     // Bring `preview`, made by this chrome's makePreview, in line with what this chrome shows.
     virtual void syncPreview(ViewChromeAttachment& /*preview*/) const {}
+    // Where the last layout drew this chrome, relative to the content origin and at its zoom; empty when nothing is
+    // drawn.
+    [[nodiscard]] virtual wlr_box drawnBox() const { return {}; }
   };
 
 } // namespace umbriel

@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # harness: xdg-data=true
-# Overview badges take their icon size from `icon_size` and sit at `badge_position` as fractions of the room inside the
+# Overview icon badges take their size from `icon_size` and sit at `icon_position` as fractions of the room inside the
 # card: [0, 0] hugs the top-left margin, [1, 1] the bottom-right one, [0.5, 0.5] centers. A badge whose position falls
 # past the output edge slides back inside it. The fill behind it takes `colors.overview.badge_background` scaled by
-# `badge_background_opacity`, and disappears at 0.
+# `badge_background_opacity`, and disappears at 0. The shortcut label is placed and sized on its own, by
+# `shortcut_position` and `shortcut_size`.
 set -euo pipefail
 
 readonly CLIENT="${UMBRIEL_UNMAP_CLIENT:-./build-debug/tests/unmap-client}"
@@ -45,10 +46,10 @@ focus_title() {
     > /dev/null
 }
 
-# Reloads with `zoom`, `badge_position`, and optional extra config appended after [overview], then opens the overview
+# Reloads with `zoom`, `icon_position`, and optional extra config appended after [overview], then opens the overview
 # and captures it.
 capture() {
-  printf '%s\n\n[appearance]\nborder_width = 0\nouter_border_width = 0\ncorner_radius = 0\n\n[layout.scrolling]\ndefault_extent_fraction = 0.5\n\n[overview]\nzoom = %s\nshortcuts = false\napp_icons = true\nicon_size = %d\nbadge_position = %s\n%s\n' \
+  printf '%s\n\n[appearance]\nborder_width = 0\nouter_border_width = 0\ncorner_radius = 0\n\n[layout.scrolling]\ndefault_extent_fraction = 0.5\n\n[overview]\nzoom = %s\nshortcuts = false\napp_icons = true\nicon_size = %d\nicon_position = %s\n%s\n' \
     "$BASELINE" "$1" "$ICON" "$2" "${3:-}" > "$UMBRIEL_CONFIG"
   "$UMBRIEL" msg config-reload > /dev/null
   "$UMBRIEL" clock-advance 2000
@@ -111,6 +112,31 @@ expect "centered icon x" $((2 * ICON_X + ICON_W)) $((2 * CARD_X + CARD_W))
 expect "centered icon y" $((2 * ICON_Y + ICON_H)) $((2 * CARD_Y + CARD_H))
 "$UMBRIEL" msg overview-close > /dev/null
 
+# The shortcut label is a badge of its own: with a magenta fill, its box on the red card is the magenta inside it.
+capture_label() {
+  printf '%s\n\n[appearance]\nborder_width = 0\nouter_border_width = 0\ncorner_radius = 0\n\n[layout.scrolling]\ndefault_extent_fraction = 0.5\n\n[overview]\nzoom = 0.5\nshortcut_size = %d\nshortcut_position = [1, 1]\n\n[colors.overview]\nbadge_background = "#FF00FFFF"\n' \
+    "$BASELINE" "$1" > "$UMBRIEL_CONFIG"
+  "$UMBRIEL" msg config-reload > /dev/null
+  "$UMBRIEL" clock-advance 2000
+  "$UMBRIEL" msg overview-open > /dev/null
+  "$UMBRIEL" clock-advance 2000
+  grim "$IMAGE"
+  read -r CARD_X CARD_Y CARD_W CARD_H < <("$UMBRIEL_PIXEL_PROBE" "$IMAGE" bbox "$RED")
+  read -r LABEL_X LABEL_Y LABEL_W LABEL_H < <(
+    "$UMBRIEL_PIXEL_PROBE" "$IMAGE" bbox 'r > 0.9 && g < 0.1 && b > 0.9' "${CARD_W}x${CARD_H}+${CARD_X}+${CARD_Y}"
+  )
+  "$UMBRIEL" msg overview-close > /dev/null
+}
+capture_label 19
+expect "bottom-right label right edge" $((LABEL_X + LABEL_W)) $((CARD_X + CARD_W - 6))
+expect "bottom-right label bottom edge" $((LABEL_Y + LABEL_H)) $((CARD_Y + CARD_H - 6))
+small_label=$LABEL_H
+capture_label 38
+if ((LABEL_H < small_label * 3 / 2)); then
+  echo "shortcut_size 38 drew a ${LABEL_H}px label, not clearly taller than the ${small_label}px one at 19"
+  exit 1
+fi
+
 # Focusing the left window pushes the right card past the output edge; its top-right badge slides back on screen.
 focus_title left
 "$UMBRIEL" clock-advance 2000
@@ -123,4 +149,4 @@ expect "clipped icon width" "$ICON_W" "$ICON"
 expect "clipped icon right edge" $((ICON_X + ICON_W)) $((OUTPUT_W - EDGE))
 expect "clipped icon y" "$ICON_Y" $((CARD_Y + EDGE))
 
-echo "badges follow icon_size, badge_position, and the background color and opacity, and stay on screen"
+echo "icon and shortcut badges follow their own position and size and the fill color and opacity, and stay on screen"

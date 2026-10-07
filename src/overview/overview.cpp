@@ -56,6 +56,8 @@ namespace umbriel {
     constexpr int kBadgeMargin = 6;
     // Inset of an application icon from the edge of its badge.
     constexpr int kBadgeIconInset = 4;
+    // Smallest fraction of its full size a badge shrinks to on a small card before it hides instead.
+    constexpr double kMinBadgeScale = 0.4;
 
     std::array<float, 4> mixColor(const std::array<float, 4>& from, const std::array<float, 4>& to, float amount) {
       std::array<float, 4> out{};
@@ -312,49 +314,27 @@ namespace umbriel {
     layoutCardChrome(card, world, decorated ? total : 0, z, presentedOpacity);
     syncCardEffects(card);
 
-    if (card.badge != nullptr) {
+    if (card.shortcutBadge.tree != nullptr || card.iconBadge.tree != nullptr) {
+      // Badges place against the card as it shows, chrome included: a tab bar above the content raises the card's
+      // top edge to the bar's.
+      int left = 0;
+      int top = 0;
+      int right = contentW;
+      int bottom = contentH;
+      if (const wlr_box chrome = card.chrome != nullptr ? card.chrome->drawnBox() : wlr_box{};
+          chrome.width > 0 && chrome.height > 0) {
+        left = chrome.x + chrome.width <= 0 ? chrome.x : left;
+        top = chrome.y + chrome.height <= 0 ? chrome.y : top;
+        right = chrome.x >= contentW ? chrome.x + chrome.width : right;
+        bottom = chrome.y >= contentH ? chrome.y + chrome.height : bottom;
+      }
+      const wlr_box area{left, top, right - left, bottom - top};
       // Overshooting curves can push m_progress past [0, 1] and wlr_scene_buffer_set_opacity asserts.
       const auto badgeAlpha = static_cast<float>(std::clamp(m_progress, 0.0, 1.0));
-      const bool fits =
-          contentW >= card.badgeWidth + 2 * kBadgeMargin && contentH >= card.badgeHeight + 2 * kBadgeMargin;
-      const bool badgeOn = fits && !m_closing && &card != m_dragCard && badgeAlpha > 0.01F;
-      wlr_scene_node_set_enabled(&card.badge->node, badgeOn);
-      if (badgeOn) {
-        // On each axis the badge sits at its configured fraction of the room inside the card's margins, then slides
-        // just far enough to stay inside the usable area, which the output clip and the top/overlay exclusive zones
-        // bound; clearing the start wins when both edges are in reach. It never leaves the card's margins, where a
-        // card scrolled out of view keeps it. `fits` keeps those bounds ordered.
-        const auto place = [](double fraction, int origin, int extent, int badgeExtent, int clipStart, int clipEnd) {
-          const int preferred =
-              kBadgeMargin + static_cast<int>(std::lround(fraction * (extent - badgeExtent - 2 * kBadgeMargin)));
-          const int visible = std::max(
-              std::min(preferred, clipEnd - kBadgeMargin - badgeExtent - origin), clipStart + kBadgeMargin - origin
-          );
-          return std::clamp(visible, kBadgeMargin, extent - badgeExtent - kBadgeMargin);
-        };
-        const std::array<double, 2>& position = config().overview.badgePosition;
-        const wlr_box& usable = metrics.usableBox;
-        wlr_scene_node_set_position(
-            &card.badge->node,
-            place(position[0], card.box.x, contentW, card.badgeWidth, usable.x, usable.x + usable.width),
-            place(position[1], card.box.y, contentH, card.badgeHeight, usable.y, usable.y + usable.height)
-        );
-        if (card.badgeText != nullptr) {
-          wlr_scene_buffer_set_opacity(card.badgeText, badgeAlpha);
-        }
-        if (card.badgeIcon != nullptr) {
-          wlr_scene_buffer_set_opacity(card.badgeIcon, badgeAlpha);
-        }
-        if (card.badgeRect != nullptr) {
-          const std::array<float, 4> background = tint(card.badgeBackground, badgeAlpha);
-          wlr_scene_rect_set_color(card.badgeRect, background.data());
-          // The badge renders unscaled, so it takes the zoomed radius the cards
-          // around it use instead of the full-size one.
-          wlr_scene_rect_set_corner_radius(
-              card.badgeRect, std::min(scaledRadius, std::min(card.badgeWidth, card.badgeHeight) / 2)
-          );
-        }
-      }
+      layoutBadge(
+          card, card.shortcutBadge, config().overview.shortcutPosition, area, metrics, badgeAlpha, scaledRadius
+      );
+      layoutBadge(card, card.iconBadge, config().overview.iconPosition, area, metrics, badgeAlpha, scaledRadius);
     }
 
     // Every surface of the card rounds against the card's content box, the same rule the live window uses, so a
@@ -440,6 +420,12 @@ namespace umbriel {
       card.chrome = live->makePreview(card.tree);
       if (card.chrome == nullptr) {
         return;
+      }
+      // The preview joins the card's tree after its badges, which stay above it.
+      for (const Badge* badge : {&card.shortcutBadge, &card.iconBadge}) {
+        if (badge->tree != nullptr) {
+          wlr_scene_node_raise_to_top(&badge->tree->node);
+        }
       }
     }
     live->syncPreview(*card.chrome);
@@ -1119,7 +1105,7 @@ namespace umbriel {
 
     wlr_surface_for_each_surface(surface, addCardSurface, raw);
     if (config().overview.appIcons) {
-      renderCardBadge(*raw);
+      renderIconBadge(*raw);
     }
 
     // Animation schedules the first output frame. The passive card buffers then
@@ -1292,115 +1278,146 @@ namespace umbriel {
     return nullptr;
   }
 
-  void Overview::renderCardBadge(Card& card) {
-    if (card.badge != nullptr) {
-      wlr_scene_node_destroy(&card.badge->node);
+  void Overview::buildBadge(
+      Card& card, Badge& badge, wlr_buffer* content, int contentWidth, int contentHeight, int width, int height
+  ) {
+    if (badge.tree != nullptr) {
+      wlr_scene_node_destroy(&badge.tree->node);
     }
-    card.badge = nullptr;
-    card.badgeRect = nullptr;
-    card.badgeText = nullptr;
-    card.badgeIcon = nullptr;
-    card.badgeWidth = 0;
-    card.badgeHeight = 0;
-
-    if (card.tree == nullptr || card.owner == nullptr || card.owner->output == nullptr) {
+    badge = {};
+    if (content == nullptr || card.tree == nullptr) {
       return;
     }
+    const auto& colors = config().colors;
+    badge.background =
+        colors.overview.badgeBackground.value_or(keycapBackgroundColor(colors.background, colors.overview.badge));
+    badge.background[3] *= static_cast<float>(config().overview.badgeBackgroundOpacity);
+    badge.tree = wlr_scene_tree_create(card.tree);
+    if (badge.tree == nullptr) {
+      return;
+    }
+    // A fully transparent fill gets no node, so it costs nothing to draw.
+    if (badge.background[3] > 0.0F) {
+      const std::array<float, 4> background = tint(badge.background, 1.0);
+      badge.fill = wlr_scene_rect_create(badge.tree, width, height, background.data());
+    }
+    badge.content = wlr_scene_buffer_create(badge.tree, content);
+    if ((badge.background[3] > 0.0F && badge.fill == nullptr) || badge.content == nullptr) {
+      wlr_scene_node_destroy(&badge.tree->node);
+      badge = {};
+      return;
+    }
+    badge.content->point_accepts_input = rejectInput;
+    badge.width = width;
+    badge.height = height;
+    badge.contentWidth = contentWidth;
+    badge.contentHeight = contentHeight;
+    wlr_scene_node_raise_to_top(&badge.tree->node);
+    wlr_scene_node_set_enabled(&badge.tree->node, false);
+  }
 
+  void Overview::renderShortcutBadge(Card& card) {
+    // The label shows while it matches the typed sequence.
+    if (card.shortcut.empty()
+        || card.shortcutMatched == SIZE_MAX
+        || card.owner == nullptr
+        || card.owner->output == nullptr) {
+      buildBadge(card, card.shortcutBadge, nullptr, 0, 0, 0, 0);
+      return;
+    }
     const double scale = std::max(1.0, std::ceil(static_cast<double>(card.owner->output->wlr()->scale)));
-    const int iconSize = config().overview.iconSize;
-    wlr_buffer* icon =
-        config().overview.appIcons ? cardIcon(card, static_cast<int>(std::lround(iconSize * scale))) : nullptr;
-    // The label shows while it matches the typed sequence; the icon always shows.
-    const bool labeled = !card.shortcut.empty() && card.shortcutMatched != SIZE_MAX;
-    if (!labeled && icon == nullptr) {
-      return;
-    }
-
     const auto& colors = config().colors;
     const std::array<float, 4>& badgeColor = colors.overview.badge;
-    card.badgeBackground =
-        colors.overview.badgeBackground.value_or(keycapBackgroundColor(colors.background, badgeColor));
-    card.badgeBackground[3] *= static_cast<float>(config().overview.badgeBackgroundOpacity);
-    TextBufferResult rendered{};
-    if (labeled) {
-      const size_t matched = std::min(card.shortcutMatched, card.shortcut.size());
-      const std::string_view shortcut(card.shortcut);
-      const std::string markup = std::format(
-          "<span foreground='{}' weight='bold'>{}</span><span foreground='{}' weight='bold'>{}</span>",
-          rgbaHex(colors.textPrimary), escapeMarkup(shortcut.substr(0, matched)), rgbaHex(badgeColor),
-          escapeMarkup(shortcut.substr(matched))
-      );
-      rendered = renderTextBuffer({
-          .markup = markup,
-          .font = "monospace 19",
-          .maxWidth = 350,
-          .padding = 0,
-          .scale = scale,
-          .bgA = 0.0,
-      });
-      if (rendered.buffer == nullptr) {
-        return;
-      }
-    }
-
-    card.badge = wlr_scene_tree_create(card.tree);
-    if (card.badge == nullptr) {
-      if (rendered.buffer != nullptr) {
-        wlr_buffer_drop(rendered.buffer);
-      }
-      return;
-    }
+    const size_t matched = std::min(card.shortcutMatched, card.shortcut.size());
+    const std::string_view shortcut(card.shortcut);
+    const std::string markup = std::format(
+        "<span foreground='{}' weight='bold'>{}</span><span foreground='{}' weight='bold'>{}</span>",
+        rgbaHex(colors.textPrimary), escapeMarkup(shortcut.substr(0, matched)), rgbaHex(badgeColor),
+        escapeMarkup(shortcut.substr(matched))
+    );
+    const TextBufferResult rendered = renderTextBuffer({
+        .markup = markup,
+        .font = std::format("monospace {}", config().overview.shortcutSize),
+        .maxWidth = 350,
+        .padding = 0,
+        .scale = scale,
+        .bgA = 0.0,
+    });
     // Keycap proportions: the label's line box sets the height, and the badge is
     // never narrower than it is tall, so a single character reads as a square.
-    // An icon leads the label, inset as far from the side as from the top.
     constexpr int kBadgeSidePad = 8;
-    const int badgeHeight = std::max(rendered.logicalHeight, icon != nullptr ? iconSize + 2 * kBadgeIconInset : 0);
-    const int iconInset = (badgeHeight - iconSize) / 2;
-    const int labelX = icon != nullptr ? iconInset + iconSize + kBadgeIconInset : kBadgeSidePad;
-    const int badgeWidth =
-        labeled ? std::max(labelX + rendered.logicalWidth + kBadgeSidePad, badgeHeight) : badgeHeight;
-    // A fully transparent fill gets no node, so it costs nothing to draw.
-    const bool filled = card.badgeBackground[3] > 0.0F;
-    if (filled) {
-      const std::array<float, 4> background = tint(card.badgeBackground, 1.0);
-      card.badgeRect = wlr_scene_rect_create(card.badge, badgeWidth, badgeHeight, background.data());
-    }
-    if (labeled) {
-      card.badgeText = wlr_scene_buffer_create(card.badge, rendered.buffer);
+    buildBadge(
+        card, card.shortcutBadge, rendered.buffer, rendered.logicalWidth, rendered.logicalHeight,
+        std::max(rendered.logicalWidth + 2 * kBadgeSidePad, rendered.logicalHeight), rendered.logicalHeight
+    );
+    if (rendered.buffer != nullptr) {
       wlr_buffer_drop(rendered.buffer);
     }
-    if (icon != nullptr) {
-      card.badgeIcon = wlr_scene_buffer_create(card.badge, icon);
+  }
+
+  void Overview::renderIconBadge(Card& card) {
+    const int size = config().overview.iconSize;
+    wlr_buffer* icon = nullptr;
+    if (config().overview.appIcons && card.owner != nullptr && card.owner->output != nullptr) {
+      const double scale = std::max(1.0, std::ceil(static_cast<double>(card.owner->output->wlr()->scale)));
+      icon = cardIcon(card, static_cast<int>(std::lround(size * scale)));
     }
-    if ((filled && card.badgeRect == nullptr)
-        || (labeled && card.badgeText == nullptr)
-        || (icon != nullptr && card.badgeIcon == nullptr)) {
-      wlr_scene_node_destroy(&card.badge->node);
-      card.badge = nullptr;
-      card.badgeRect = nullptr;
-      card.badgeText = nullptr;
-      card.badgeIcon = nullptr;
+    buildBadge(card, card.iconBadge, icon, size, size, size + 2 * kBadgeIconInset, size + 2 * kBadgeIconInset);
+  }
+
+  void Overview::layoutBadge(
+      Card& card, Badge& badge, const std::array<double, 2>& position, const wlr_box& area,
+      const PreviewMetrics& metrics, float alpha, int radius
+  ) const {
+    if (badge.tree == nullptr) {
       return;
     }
-
-    if (card.badgeText != nullptr) {
-      wlr_scene_node_set_position(
-          &card.badgeText->node, icon != nullptr ? labelX : (badgeWidth - rendered.logicalWidth) / 2,
-          (badgeHeight - rendered.logicalHeight) / 2
+    // A card too small for the badge shrinks it into the room inside its margins. A shrunken badge shows only while it
+    // stays legible and covers no more than a quarter of the card, so a tiny card keeps its window in view.
+    const int roomW = area.width - 2 * kBadgeMargin;
+    const int roomH = area.height - 2 * kBadgeMargin;
+    const double scale =
+        std::min({1.0, static_cast<double>(roomW) / badge.width, static_cast<double>(roomH) / badge.height});
+    const auto scaled = [scale](int extent) { return std::max(1, static_cast<int>(std::lround(extent * scale))); };
+    const int width = std::min(scaled(badge.width), roomW);
+    const int height = std::min(scaled(badge.height), roomH);
+    const bool shown = scale >= 1.0 || (scale >= kMinBadgeScale && 4 * width * height <= area.width * area.height);
+    const bool on = shown && !m_closing && &card != m_dragCard && alpha > 0.01F;
+    wlr_scene_node_set_enabled(&badge.tree->node, on);
+    if (!on) {
+      return;
+    }
+    // On each axis the badge sits at its configured fraction of the room inside the area's margins, then slides just
+    // far enough to stay inside the usable area, which the output clip and the top/overlay exclusive zones bound;
+    // clearing the start wins when both edges are in reach. It never leaves the area's margins, where a card scrolled
+    // out of view keeps it.
+    const auto place = [](double fraction, int origin, int extent, int badgeExtent, int clipStart, int clipEnd) {
+      const int preferred =
+          kBadgeMargin + static_cast<int>(std::lround(fraction * (extent - badgeExtent - 2 * kBadgeMargin)));
+      const int visible = std::max(
+          std::min(preferred, clipEnd - kBadgeMargin - badgeExtent - origin), clipStart + kBadgeMargin - origin
       );
-      wlr_scene_buffer_set_dest_size(card.badgeText, rendered.logicalWidth, rendered.logicalHeight);
-      card.badgeText->point_accepts_input = rejectInput;
+      return std::clamp(visible, kBadgeMargin, extent - badgeExtent - kBadgeMargin);
+    };
+    const wlr_box& usable = metrics.usableBox;
+    wlr_scene_node_set_position(
+        &badge.tree->node,
+        area.x + place(position[0], card.box.x + area.x, area.width, width, usable.x, usable.x + usable.width),
+        area.y + place(position[1], card.box.y + area.y, area.height, height, usable.y, usable.y + usable.height)
+    );
+    const int contentWidth = std::min(scaled(badge.contentWidth), width);
+    const int contentHeight = std::min(scaled(badge.contentHeight), height);
+    wlr_scene_node_set_position(&badge.content->node, (width - contentWidth) / 2, (height - contentHeight) / 2);
+    wlr_scene_buffer_set_dest_size(badge.content, contentWidth, contentHeight);
+    wlr_scene_buffer_set_opacity(badge.content, alpha);
+    if (badge.fill != nullptr) {
+      wlr_scene_rect_set_size(badge.fill, width, height);
+      const std::array<float, 4> background = tint(badge.background, alpha);
+      wlr_scene_rect_set_color(badge.fill, background.data());
+      // The badge renders unscaled, so it takes the zoomed radius the cards
+      // around it use instead of the full-size one.
+      wlr_scene_rect_set_corner_radius(badge.fill, std::min(radius, std::min(width, height) / 2));
     }
-    if (card.badgeIcon != nullptr) {
-      wlr_scene_node_set_position(&card.badgeIcon->node, iconInset, iconInset);
-      wlr_scene_buffer_set_dest_size(card.badgeIcon, iconSize, iconSize);
-      card.badgeIcon->point_accepts_input = rejectInput;
-    }
-    card.badgeWidth = badgeWidth;
-    card.badgeHeight = badgeHeight;
-    wlr_scene_node_raise_to_top(&card.badge->node);
-    wlr_scene_node_set_enabled(&card.badge->node, false);
   }
 
   wlr_buffer* Overview::cardIcon(const Card& card, int size) {
@@ -1457,7 +1474,7 @@ namespace umbriel {
       card.shortcut = std::move(label);
       card.shortcutMatched = 0;
       if (changed) {
-        renderCardBadge(card);
+        renderShortcutBadge(card);
       }
     };
     const auto clearAll = [&]() {
@@ -3072,7 +3089,7 @@ namespace umbriel {
         const size_t matched = shortcutStartsWith(card->shortcut, m_shortcutInput) ? m_shortcutInput.size() : SIZE_MAX;
         if (card->shortcutMatched != matched) {
           card->shortcutMatched = matched;
-          renderCardBadge(*card);
+          renderShortcutBadge(*card);
         }
       }
     }

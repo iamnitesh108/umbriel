@@ -14,10 +14,12 @@ background_blur = true
 workspace_wallpaper = true
 shortcuts = true
 shortcut_keys = "1234567890"
+shortcut_size = 19
+shortcut_position = [0.0, 0.0]
 app_icons = false
 icon_theme = "hicolor"
 icon_size = 24
-badge_position = [0.0, 0.0]
+icon_position = [0.5, 0.5]
 badge_background_opacity = 1.0
 ```
 
@@ -30,10 +32,12 @@ badge_background_opacity = 1.0
 | `workspace_wallpaper` | `true` | Show each output's background inside its workspace previews. |
 | `shortcuts` | `true` | Show and accept keyboard shortcut badges. |
 | `shortcut_keys` | `"1234567890"` | Preferred keys for shortcut badges. |
-| `app_icons` | `false` | Show each window's application icon in its badge. |
+| `shortcut_size` | `19` | Shortcut label text size in points, from 8 to 72. |
+| `shortcut_position` | `[0.0, 0.0]` | Shortcut badge placement as `[x, y]` fractions from 0 to 1. |
+| `app_icons` | `false` | Show each window's application icon in a badge of its own. |
 | `icon_theme` | `"hicolor"` | Icon theme for application icons; icons it lacks come from `hicolor`. |
 | `icon_size` | `24` | Application icon size in logical pixels, from 12 to 128. |
-| `badge_position` | `[0.0, 0.0]` | Badge placement on its card as `[x, y]` fractions from 0 to 1. |
+| `icon_position` | `[0.5, 0.5]` | Icon badge placement as `[x, y]` fractions from 0 to 1. |
 | `badge_background_opacity` | `1.0` | Opacity of the fill behind badges, from 0 (no fill) to 1. |
 
 Background blur uses `[appearance.blur]`. Preview backgrounds use
@@ -87,10 +91,8 @@ characters.
 
 #### Application icons
 
-Set `app_icons = true` to show each window's application icon in its badge,
-beside the shortcut label. With `shortcuts = false` the badge shows only the
-icon. While a key sequence is pending, a card whose label no longer matches
-keeps its icon and drops the label.
+Set `app_icons = true` to show each window's application icon. The icon and the
+shortcut label are separate badges, each with its own position and size.
 
 Umbriel finds the icon through the window's desktop entry, ignoring case. It
 takes the first entry that matches, in this order:
@@ -112,13 +114,13 @@ looked up once per session and decoded only while the overview is open. With
 
 #### Badge placement
 
-`badge_position` places every badge, label or icon, as fractions of the room
-the card leaves around it: `[0, 0]` is the top-left corner, `[1, 1]` the
+`shortcut_position` and `icon_position` place their badges as fractions of the
+room the card leaves around them: `[0, 0]` is the top-left corner, `[1, 1]` the
 bottom-right, `[0.5, 0.5]` the center, and any value between works, such as
-`[0.6, 0.4]`. The badge always stays inside the card's margin, and slides just
-far enough to stay visible when its card runs past the output edge or under a
-panel. A badge larger than its card is hidden, so a large
-`icon_size` can hide badges on small cards.
+`[0.6, 0.4]`. The card includes its tab bar. A badge stays inside the card's
+margin, slides just far enough to stay visible when its card runs past the
+output edge or under a panel, and shrinks on a card too small for it. A badge
+that would cover more than a quarter of a tiny card is hidden.
 
 The fill behind a badge uses `colors.overview.badge_background`, its alpha
 scaled by `badge_background_opacity`. At `0` no fill is drawn and the label or

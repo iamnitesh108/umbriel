@@ -78,6 +78,7 @@ namespace umbriel {
     // An overview card's copy of this bar: the same tabs, drawn at the card's zoom.
     [[nodiscard]] std::unique_ptr<ViewChromeAttachment> makePreview(wlr_scene_tree* parent) const override;
     void syncPreview(ViewChromeAttachment& preview) const override;
+    [[nodiscard]] wlr_box drawnBox() const override;
 
   private:
     // A tab slot or a cycle button. Its text, when it has some, is created after its fill and so stacks above it.

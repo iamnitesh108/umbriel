@@ -172,6 +172,19 @@ namespace umbriel {
       wl_listener frameDone{};
     };
 
+    // A label or icon over a card, centered on an optional fill. Sizes are the full-size ones; a card too small for
+    // them shrinks the badge to fit.
+    struct Badge {
+      wlr_scene_tree* tree = nullptr;
+      wlr_scene_rect* fill = nullptr;
+      wlr_scene_buffer* content = nullptr;
+      int width = 0;
+      int height = 0;
+      int contentWidth = 0;
+      int contentHeight = 0;
+      std::array<float, 4> background{};
+    };
+
     struct Card {
       Overview* overview = nullptr;
       OutputState* owner = nullptr;
@@ -192,13 +205,8 @@ namespace umbriel {
       std::unique_ptr<ViewChromeAttachment> chrome;
       std::vector<std::unique_ptr<CardSurface>> surfaces;
       wlr_box box{}; // content box in layout coordinates
-      wlr_scene_tree* badge = nullptr;
-      wlr_scene_rect* badgeRect = nullptr;
-      wlr_scene_buffer* badgeText = nullptr;
-      wlr_scene_buffer* badgeIcon = nullptr;
-      int badgeWidth = 0;
-      int badgeHeight = 0;
-      std::array<float, 4> badgeBackground{};
+      Badge shortcutBadge;
+      Badge iconBadge;
       std::string shortcut;
       size_t shortcutMatched = 0;
     };
@@ -341,7 +349,20 @@ namespace umbriel {
     [[nodiscard]] View* liveTargetView() const;
     [[nodiscard]] std::array<float, 4> cardBorderColor(const Card& card, const View* liveTarget) const;
     void assignShortcuts();
-    void renderCardBadge(Card& card);
+    // Rebuild the card's shortcut label badge or application icon badge from its current state.
+    void renderShortcutBadge(Card& card);
+    void renderIconBadge(Card& card);
+    // Replace `badge` with a `width` x `height` one centering `content` at `contentWidth` x `contentHeight`; null
+    // `content` leaves it empty.
+    static void buildBadge(
+        Card& card, Badge& badge, wlr_buffer* content, int contentWidth, int contentHeight, int width, int height
+    );
+    // Place `badge` at `position` within `area`, the card's visible box relative to its origin, shrinking it when the
+    // area is too small for it.
+    void layoutBadge(
+        Card& card, Badge& badge, const std::array<double, 2>& position, const wlr_box& area,
+        const PreviewMetrics& metrics, float alpha, int radius
+    ) const;
     // The decoded icon of the card's app at `size` pixels, or null when it has none.
     [[nodiscard]] wlr_buffer* cardIcon(const Card& card, int size);
     void releaseIcons();

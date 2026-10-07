@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # harness: xdg-data=true
-# Overview badges show application icons with `app_icons`: a PNG named by the desktop entry named after the app id, and
-# an SVG named by the entry whose StartupWMClass matches it. Without `app_icons` no icon is drawn. Beside a label, an icon stays when a typed sequence leaves the
-# label unmatched, and only the label goes. A reload to another `icon_theme` switches to that theme's icons and keeps
-# the ones it inherits.
+# Overview cards show application icons with `app_icons`: a PNG named by the desktop entry named after the app id, and
+# an SVG named by the entry whose StartupWMClass matches it. Without `app_icons` no icon is drawn. Typing a sequence
+# that leaves a card's label unmatched hides the label and keeps the card's icon. A reload to another `icon_theme`
+# switches to that theme's icons and keeps the ones it inherits.
 set -euo pipefail
 
 readonly OUTPUT_W=1280
@@ -15,7 +15,7 @@ readonly THEME="$XDG_DATA_HOME/icons/hicolor"
 readonly GREEN='g > 0.9 && r < 0.1 && b < 0.1'
 readonly BLUE='b > 0.9 && r < 0.1 && g < 0.1'
 readonly YELLOW='r > 0.9 && g > 0.9 && b < 0.1'
-readonly NOT_RED='!(r > 0.9 && g < 0.1 && b < 0.1)'
+readonly MAGENTA='r > 0.9 && g < 0.1 && b > 0.9'
 BASELINE=$(< "$UMBRIEL_CONFIG")
 
 mkdir -p "$THEME/48x48/apps" "$THEME/scalable/apps" "$XDG_DATA_HOME/icons/harness/48x48/apps" \
@@ -91,14 +91,6 @@ count() {
   "$UMBRIEL_PIXEL_PROBE" "$IMAGE" count "$1"
 }
 
-# Width of the badge around the green icon: everything not red in the icon's rows, from the badge edge rightwards.
-green_badge_width() {
-  local x y w h
-  read -r x y w h < <("$UMBRIEL_PIXEL_PROBE" "$IMAGE" bbox "$GREEN")
-  read -r _ _ w _ < <("$UMBRIEL_PIXEL_PROBE" "$IMAGE" bbox "$NOT_RED" "200x${h}+$((x - 4))+${y}")
-  echo "$w"
-}
-
 "$UMBRIEL" clock-freeze
 FILL_COLOR=0xFFFF0000 APP_ID=harness-png "$CLIENT" png 600 600 > /dev/null 2>&1 &
 wait_for_count 1
@@ -125,23 +117,18 @@ if ((green < 400 || blue < 400)); then
   echo "expected two icons of about 24x24 pixels, got green $green, blue $blue"
   exit 1
 fi
-icon_only=$(green_badge_width)
 "$UMBRIEL" msg overview-close > /dev/null
 
-write_config $'shortcut_keys = "12"\napp_icons = true'
+# Every badge fills magenta, so the magenta drawn shrinks by one label when typing hides it.
+write_config $'shortcut_keys = "12"\napp_icons = true\n\n[colors.overview]\nbadge_background = "#FF00FFFF"'
 open_overview
-labeled=$(green_badge_width)
-if ((labeled <= icon_only)); then
-  echo "the labeled badge ($labeled px) is not wider than the icon-only one ($icon_only px)"
-  exit 1
-fi
+labeled=$(count "$MAGENTA")
 # Labels are 1, 21 and 22 from the left, so typing 2 leaves the first card's label unmatched.
 pointer tap 3
 "$UMBRIEL" clock-advance 2000
 grim "$IMAGE"
-unmatched=$(green_badge_width)
-if (($(count "$GREEN") < 400 || unmatched != icon_only)); then
-  echo "an unmatched label should leave only its icon: green $(count "$GREEN"), badge $unmatched px, icon-only $icon_only px"
+if (($(count "$GREEN") < 400 || $(count "$MAGENTA") >= labeled)); then
+  echo "an unmatched label should go and leave its card's icon: green $(count "$GREEN"), magenta $(count "$MAGENTA") of $labeled"
   exit 1
 fi
 

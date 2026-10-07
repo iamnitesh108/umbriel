@@ -190,6 +190,20 @@ namespace umbriel {
       return position;
     }
 
+    // An `[x, y]` badge placement, each a fraction from 0 to 1.
+    registry::Field<Config::Overview>
+    badgePosition(std::string_view key, std::array<double, 2> Config::Overview::* member) {
+      return registry::custom<Config::Overview>(
+          key, registry::KeyDescription("array"),
+          [member](const toml::node& node, const std::string& path, Config::Overview& target, registry::ReadContext&) {
+            if (auto position = parseBadgePosition(node, path)) {
+              target.*member = *position;
+            }
+          },
+          [member](const Config::Overview& defaults) { return nlohmann::ordered_json(defaults.*member); }
+      );
+    }
+
     const registry::Fields<Config::Overview>& overviewFields() {
       using registry::boolean;
       using registry::real;
@@ -210,18 +224,12 @@ namespace umbriel {
               },
               [](const O& defaults) { return nlohmann::ordered_json(defaults.shortcutKeys); }
           ),
+          registry::integer("shortcut_size", 8, 72, &O::shortcutSize),
+          badgePosition("shortcut_position", &O::shortcutPosition),
           boolean("app_icons", &O::appIcons),
           registry::text("icon_theme", &O::iconTheme),
           registry::integer("icon_size", 12, 128, &O::iconSize),
-          registry::custom<O>(
-              "badge_position", registry::KeyDescription("array"),
-              [](const toml::node& node, const std::string& path, O& target, registry::ReadContext&) {
-                if (auto position = parseBadgePosition(node, path)) {
-                  target.badgePosition = *position;
-                }
-              },
-              [](const O& defaults) { return nlohmann::ordered_json(defaults.badgePosition); }
-          ),
+          badgePosition("icon_position", &O::iconPosition),
           real("badge_background_opacity", 0.0, 1.0, &O::badgeBackgroundOpacity),
       };
       return fields;

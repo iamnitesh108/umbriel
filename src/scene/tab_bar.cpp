@@ -167,6 +167,8 @@ namespace umbriel {
     return {.x = frameX + local.x, .y = frameY + local.y, .width = local.width, .height = local.height};
   }
 
+  wlr_box TabBar::drawnBox() const { return drawn() ? zoomed(localBox()) : wlr_box{}; }
+
   void TabBar::redraw() {
     if (!drawn()) {
       wlr_scene_node_set_enabled(&m_tree->node, false);

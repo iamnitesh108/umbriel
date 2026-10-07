@@ -1232,41 +1232,49 @@ UMBRIEL_TEST(overviewBadgeConfigurationLoads) {
 
   CHECK(!store.config().colors.overview.badgeBackground);
   CHECK_EQ(store.config().overview.badgeBackgroundOpacity, 1.0);
+  CHECK(store.config().overview.shortcutPosition == (std::array<double, 2>{0.0, 0.0}));
+  CHECK(store.config().overview.iconPosition == (std::array<double, 2>{0.5, 0.5}));
 
   file.write(
-      "[overview]\nicon_size = 48\nbadge_position = [0.6, 1]\nbadge_background_opacity = 0\n\n"
-      "[colors.overview]\nbadge_background = \"#FF000080\"\n"
+      "[overview]\nshortcut_size = 30\nshortcut_position = [1, 0.25]\nicon_size = 48\nicon_position = [0.6, 1]\n"
+      "badge_background_opacity = 0\n\n[colors.overview]\nbadge_background = \"#FF000080\"\n"
   );
   CHECK(store.reload().success);
+  CHECK_EQ(store.config().overview.shortcutSize, 30);
+  CHECK(store.config().overview.shortcutPosition == (std::array<double, 2>{1.0, 0.25}));
   CHECK_EQ(store.config().overview.iconSize, 48);
-  CHECK_EQ(store.config().overview.badgePosition[0], 0.6);
-  CHECK_EQ(store.config().overview.badgePosition[1], 1.0);
+  CHECK(store.config().overview.iconPosition == (std::array<double, 2>{0.6, 1.0}));
   CHECK_EQ(store.config().overview.badgeBackgroundOpacity, 0.0);
   CHECK(store.config().colors.overview.badgeBackground.has_value());
   CHECK_EQ((*store.config().colors.overview.badgeBackground)[0], 1.0F);
 
-  file.write("[overview]\nbadge_background_opacity = 1.5\n");
+  file.write("[overview]\nbadge_background_opacity = 1.5\nshortcut_size = 200\n");
   CHECK(store.reload().success);
   CHECK_EQ(store.config().overview.badgeBackgroundOpacity, 1.0);
+  CHECK_EQ(store.config().overview.shortcutSize, 72);
 }
 
-UMBRIEL_TEST(overviewBadgePositionRejectsInvalidValues) {
+UMBRIEL_TEST(overviewBadgePositionsRejectInvalidValues) {
   const TempConfig file;
   ConfigStore& store = umbriel::configStore();
   store.setRootPath(file.path(), true);
-  const std::array<double, 2> topLeft{0.0, 0.0};
+  const umbriel::Config defaults;
 
-  for (const char* value : {"[0.5]", "[0.5, 0.5, 0.5]", "0.5"}) {
-    file.write(std::format("[overview]\nbadge_position = {}\n", value));
-    CHECK(store.reload().success);
-    CHECK(store.config().overview.badgePosition == topLeft);
-    CHECK(containsDiagnostic(store, "expected [x, y]"));
-  }
-  for (const char* value : {"[1.2, 0]", "[0, -0.1]", "[nan, 0]", "[0, inf]", "[0.5, \"top\"]"}) {
-    file.write(std::format("[overview]\nbadge_position = {}\n", value));
-    CHECK(store.reload().success);
-    CHECK(store.config().overview.badgePosition == topLeft);
-    CHECK(containsDiagnostic(store, "expected numbers from 0 to 1"));
+  for (const char* key : {"shortcut_position", "icon_position"}) {
+    for (const char* value : {"[0.5]", "[0.5, 0.5, 0.5]", "0.5"}) {
+      file.write(std::format("[overview]\n{} = {}\n", key, value));
+      CHECK(store.reload().success);
+      CHECK(store.config().overview.shortcutPosition == defaults.overview.shortcutPosition);
+      CHECK(store.config().overview.iconPosition == defaults.overview.iconPosition);
+      CHECK(containsDiagnostic(store, "expected [x, y]"));
+    }
+    for (const char* value : {"[1.2, 0]", "[0, -0.1]", "[nan, 0]", "[0, inf]", "[0.5, \"top\"]"}) {
+      file.write(std::format("[overview]\n{} = {}\n", key, value));
+      CHECK(store.reload().success);
+      CHECK(store.config().overview.shortcutPosition == defaults.overview.shortcutPosition);
+      CHECK(store.config().overview.iconPosition == defaults.overview.iconPosition);
+      CHECK(containsDiagnostic(store, "expected numbers from 0 to 1"));
+    }
   }
 }
 

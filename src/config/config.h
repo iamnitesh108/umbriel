@@ -863,15 +863,18 @@ namespace umbriel {
       bool shortcuts = true;
       // Favorite badge keys in preference order, one ASCII character each.
       std::string shortcutKeys = "1234567890";
-      // Show each card's application icon in its badge.
+      // Text size of the shortcut label, in points.
+      int shortcutSize = 19;
+      // Badge placements as fractions of the room a card leaves around the badge: {0, 0} is the top-left corner,
+      // {1, 1} the bottom-right, {0.5, 0.5} the center.
+      std::array<double, 2> shortcutPosition{0.0, 0.0};
+      std::array<double, 2> iconPosition{0.5, 0.5};
+      // Show each card's application icon in a badge of its own.
       bool appIcons = false;
       // XDG icon theme for application icons; icons it lacks come from hicolor.
       std::string iconTheme = "hicolor";
-      // Logical size of the application icon in a badge.
+      // Logical size of the application icon.
       int iconSize = 24;
-      // Badge placement as fractions of the room a card leaves around it: {0, 0} is the top-left corner, {1, 1} the
-      // bottom-right, {0.5, 0.5} the center.
-      std::array<double, 2> badgePosition{0.0, 0.0};
       // Scales the alpha of colors.overview.badge_background; 0 draws no fill behind the label or icon.
       double badgeBackgroundOpacity = 1.0;
       bool operator==(const Overview&) const = default;
