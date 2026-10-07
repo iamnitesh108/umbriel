@@ -52,8 +52,7 @@ namespace umbriel {
     }
     // Bring `preview`, made by this chrome's makePreview, in line with what this chrome shows.
     virtual void syncPreview(ViewChromeAttachment& /*preview*/) const {}
-    // Where the last layout drew this chrome, relative to the content origin and at its zoom; empty when nothing is
-    // drawn.
+    // Where the last layout drew this chrome, relative to the content origin at its zoom; empty when not drawn.
     [[nodiscard]] virtual wlr_box drawnBox() const { return {}; }
   };
 

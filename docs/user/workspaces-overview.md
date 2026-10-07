@@ -108,13 +108,14 @@ takes the first entry that matches, in this order:
 4. The program in the entry's `Exec`, or its `Name`, is the app ID or that last
    part.
 
-An entry shown in menus is preferred over a `NoDisplay` one, and `Hidden`
-entries are ignored. The entry's icon is looked up in `icon_theme`, the themes
-it inherits, and `hicolor`, then in `pixmaps` directories; when the entry names
-none that exists, the app ID itself is tried as an icon name. PNG and SVG icons
-are used; a build without SVG support uses PNG icons only. Each icon is found
-and decoded once, then kept until its application's last window closes. With
-`app_icons = false` no icon is looked up or loaded.
+Entries shown in menus win over `NoDisplay` ones, and `Hidden` entries are
+ignored. The icon is looked up in `icon_theme`, the themes it inherits,
+`hicolor`, and then `pixmaps`, with the app ID as a last-resort icon name. SVG
+icons need a build with SVG support.
+
+Icons are decoded once and kept until the application's last window closes. An
+application without an icon is checked again once a desktop entry is installed
+or changed. With `app_icons = false` nothing is looked up or loaded.
 
 #### Badge placement
 

@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
 # harness: xdg-data=true
-# Overview cards show application icons with `app_icons`: a PNG named by the desktop entry named after the app id, and
-# an SVG named by the entry whose StartupWMClass matches it. Without `app_icons` no icon is drawn. Typing a sequence
-# that leaves a card's label unmatched hides the label and keeps the card's icon. A reload to another `icon_theme`
-# switches to that theme's icons and keeps the ones it inherits. An icon installed after an app was found without one
-# shows on the next open.
+# Overview cards show application icons with `app_icons`: a PNG from the desktop entry named after the app id, and an
+# SVG (a PNG without SVG support) from the entry matched by StartupWMClass. Without `app_icons` no icon is drawn. A
+# typed sequence that leaves a label unmatched hides the label and keeps the icon, `icon_theme` switches icons, and an
+# app installed later shows its icon on the next open.
 set -euo pipefail
 
 readonly OUTPUT_W=1280
@@ -41,22 +40,30 @@ EOF
 printf '[Icon Theme]\nName=Harness\nInherits=hicolor\nDirectories=48x48/apps\n\n[48x48/apps]\nSize=48\nContext=Applications\nType=Threshold\n' \
   > "$XDG_DATA_HOME/icons/harness/index.theme"
 # Solid 48x48 icons. In hicolor: a green PNG for the entry named after its app id, a blue SVG for the entry matched by
-# StartupWMClass. The harness theme replaces the green icon with a yellow one and inherits the blue one.
-python3 - "$XDG_DATA_HOME/icons" << 'PY'
+# StartupWMClass, or a blue PNG in a build that cannot decode SVG. The harness theme replaces the green icon with a
+# yellow one and inherits the blue one.
+svg=0
+grep -aq nsvgRasterize "$UMBRIEL" && svg=1
+python3 - "$XDG_DATA_HOME/icons" "$svg" << 'PY'
 import struct, sys, zlib
 def chunk(kind, data):
     return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data))
-for path, pixel in (
+icons = [
     ("hicolor/48x48/apps/harness-green", b"\x00\xff\x00\xff"),
     ("harness/48x48/apps/harness-green", b"\xff\xff\x00\xff"),
-):
+]
+if sys.argv[2] == "0":
+    icons.append(("hicolor/48x48/apps/harness-blue", b"\x00\x00\xff\xff"))
+for path, pixel in icons:
     rows = b"".join(b"\0" + pixel * 48 for _ in range(48))
     png = b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", 48, 48, 8, 6, 0, 0, 0))
     png += chunk(b"IDAT", zlib.compress(rows)) + chunk(b"IEND", b"")
     open(f"{sys.argv[1]}/{path}.png", "wb").write(png)
 PY
-printf '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48"><rect width="48" height="48" fill="#0000ff"/></svg>\n' \
-  > "$THEME/scalable/apps/harness-blue.svg"
+if ((svg)); then
+  printf '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48"><rect width="48" height="48" fill="#0000ff"/></svg>\n' \
+    > "$THEME/scalable/apps/harness-blue.svg"
+fi
 printf '[Desktop Entry]\nType=Application\nName=Harness PNG\nIcon=harness-green\n' \
   > "$XDG_DATA_HOME/applications/harness-png.desktop"
 printf '[Desktop Entry]\nType=Application\nName=Harness SVG\nIcon=harness-blue\nStartupWMClass=Harness-Class\n' \
@@ -146,7 +153,8 @@ fi
 "$UMBRIEL" msg overview-close > /dev/null
 "$UMBRIEL" clock-advance 2000
 
-# The third window's app had no icon on every open so far; one installed now shows on the next open.
+# The third window's app had no icon on every open so far; once it is installed, entry and icon, the next open shows
+# it.
 readonly CYAN='g > 0.9 && b > 0.9 && r < 0.1'
 if (($(count "$CYAN") != 0)); then
   echo "the app without an icon drew one: cyan $(count "$CYAN")"
@@ -161,6 +169,8 @@ png = b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", 48, 48, 8, 6
 png += chunk(b"IDAT", zlib.compress(rows)) + chunk(b"IEND", b"")
 open(sys.argv[1], "wb").write(png)
 PY
+printf '[Desktop Entry]\nType=Application\nName=Harness None\nIcon=harness-none\n' \
+  > "$XDG_DATA_HOME/applications/harness-none.desktop"
 open_overview
 if (($(count "$CYAN") < 400)); then
   echo "an icon installed after its app was first looked up never showed: cyan $(count "$CYAN")"

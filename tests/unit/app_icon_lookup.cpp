@@ -397,4 +397,30 @@ UMBRIEL_TEST(findIconTakesNamesPathsAndHomePaths) {
   CHECK(lookup.findIcon("", 48).empty());
 }
 
+UMBRIEL_TEST(otherContextsAnswerNamesNoApplicationDirectoryHolds) {
+  const IconTree tree("other-context");
+  tree.theme("hicolor", {"48x48/apps:48:Threshold:Applications", "48x48/mimetypes:48:Threshold:MimeTypes"});
+  const auto app = tree.write("icons/hicolor/48x48/apps/shared.png");
+  tree.write("icons/hicolor/48x48/mimetypes/shared.png");
+  const auto generic = tree.write("icons/hicolor/48x48/mimetypes/application-x-executable.png");
+  const AppIconLookup lookup = tree.lookup();
+  CHECK_EQ(lookup.findIcon("shared", 48), app);
+  CHECK_EQ(lookup.findIcon("application-x-executable", 48), generic);
+}
+
+UMBRIEL_TEST(absurdThemeSizesAreIgnored) {
+  const IconTree tree("absurd");
+  tree.write(
+      "icons/hicolor/index.theme",
+      "[Icon Theme]\nName=Hicolor\nDirectories=huge/apps,48x48/apps\n\n[huge/apps]\nSize=2147483647\nScale=2147483647\n"
+      "Context=Applications\n\n[48x48/apps]\nSize=48\nScale=99999\nMaxSize=2147483647\nContext=Applications\n"
+  );
+  tree.write("icons/hicolor/huge/apps/example.png");
+  const auto icon = tree.write("icons/hicolor/48x48/apps/example.png");
+  tree.write("icons/fresh/99999x99999@99999/apps/other.png");
+  tree.write("icons/fresh/48x48/apps/other.png");
+  CHECK_EQ(tree.lookup().find("example", 0, 48), icon);
+  CHECK(!tree.lookup("fresh").findIcon("other", 48).empty());
+}
+
 int main() { return RUN_TESTS(); }

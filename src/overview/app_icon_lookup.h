@@ -25,23 +25,20 @@ namespace umbriel {
   // The XDG search paths from $HOME, $XDG_DATA_HOME, and $XDG_DATA_DIRS.
   [[nodiscard]] AppIconSearchPaths appIconSearchPaths();
 
-  // Resolves application icons the way desktop entries and XDG icon themes describe them. A window's desktop entry is
-  // found by the first of these that matches, ignoring case: its desktop ID or StartupWMClass equals the app id; it is
-  // the Flatpak or Snap app the window's process belongs to; its desktop ID or StartupWMClass equals the last part of
-  // a reverse-DNS app id; its Exec program or Name equals the app id or that last part. Within one rule an entry
-  // shown in menus wins over a NoDisplay one. The entry's Icon is searched in `theme`, the themes it inherits, and
-  // hicolor, then in the unthemed fallbacks, followed by names derived from the app id. Only application directories
-  // of each theme are searched. Theme indexes are parsed on construction and the desktop entries on the first app no
-  // entry is named after, both held until destruction, so keep a lookup only while resolving.
+  // Modification times of the desktop entry directories; installing an application changes one.
+  [[nodiscard]] std::vector<std::filesystem::file_time_type> desktopEntryStamp(const AppIconSearchPaths& paths);
+
+  // Finds a window's icon through its desktop entry and the XDG icon themes. The entry is the first that matches,
+  // ignoring case: desktop ID or StartupWMClass equal to the app id, the Flatpak or Snap app of the window's process,
+  // the same two for the app id's last reverse-DNS part, then the Exec program or Name. Indexes are parsed on first
+  // use and kept, so hold a lookup only while resolving.
   class AppIconLookup {
   public:
     AppIconLookup(AppIconSearchPaths paths, std::string_view theme);
 
-    // The PNG file, or SVG file in builds that decode SVG, closest to `size` pixels for the window with `appId` whose
-    // client process is `pid` (0 when unknown), or empty when there is none.
+    // The icon file for the window with `appId` and process `pid` (0 when unknown) closest to `size` pixels, or empty.
     [[nodiscard]] std::filesystem::path find(std::string_view appId, pid_t pid, int size);
-    // The file for `icon` closest to `size` pixels: an icon name searched like an application's, an absolute path, or a
-    // path under ~/. Empty when there is no decodable file.
+    // The file for `icon`, an icon name, an absolute path, or a path under ~/, closest to `size` pixels, or empty.
     [[nodiscard]] std::filesystem::path findIcon(std::string_view icon, int size) const;
 
   private:
@@ -53,6 +50,8 @@ namespace umbriel {
       int minSize = 0;
       int maxSize = 0;
       int threshold = 2;
+      // Holds application icons: its Context is Applications or unset.
+      bool applications = true;
     };
 
     struct Theme {

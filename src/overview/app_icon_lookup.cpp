@@ -18,6 +18,10 @@ namespace umbriel {
 
     using Group = std::unordered_map<std::string, std::string>;
 
+    // Bounds on what a theme index or directory name may claim, so its arithmetic stays in range.
+    constexpr int kMaxIconSize = 1024;
+    constexpr int kMaxScale = 16;
+
 #ifdef UMBRIEL_SVG_ICONS
     constexpr std::string_view kExtensions[] = {".png", ".svg"};
 #else
@@ -203,7 +207,7 @@ namespace umbriel {
           return std::nullopt;
         }
       }
-      if (size <= 0 || scale <= 0) {
+      if (size <= 0 || size > kMaxIconSize || scale <= 0 || scale > kMaxScale) {
         return std::nullopt;
       }
       return std::pair{size, scale};
@@ -246,6 +250,17 @@ namespace umbriel {
       paths.pixmaps.push_back(dir / "pixmaps");
     }
     return paths;
+  }
+
+  std::vector<std::filesystem::file_time_type> desktopEntryStamp(const AppIconSearchPaths& paths) {
+    std::vector<std::filesystem::file_time_type> stamp;
+    stamp.reserve(paths.applications.size());
+    for (const std::filesystem::path& dir : paths.applications) {
+      std::error_code error;
+      const std::filesystem::file_time_type time = std::filesystem::last_write_time(dir, error);
+      stamp.push_back(error ? std::filesystem::file_time_type::min() : time);
+    }
+    return stamp;
   }
 
   AppIconLookup::AppIconLookup(AppIconSearchPaths paths, std::string_view theme) : m_paths(std::move(paths)) {
@@ -315,12 +330,15 @@ namespace umbriel {
         continue;
       }
       const Group& keys = group->second;
-      const std::string_view context = value(keys, "Context");
       const int size = number(keys, "Size", 0);
-      if (size <= 0 || (!context.empty() && context != "Applications")) {
+      if (size <= 0 || size > kMaxIconSize) {
         continue;
       }
-      const int scale = std::max(1, number(keys, "Scale", 1));
+      const int scale = std::clamp(number(keys, "Scale", 1), 1, kMaxScale);
+      const auto bounded = [&keys, scale](const std::string& key, int fallback) {
+        return std::clamp(number(keys, key, fallback), 0, kMaxIconSize) * scale;
+      };
+      const std::string_view context = value(keys, "Context");
       const std::string_view type = value(keys, "Type");
       theme.directories.push_back({
           .path = std::move(path),
@@ -328,9 +346,10 @@ namespace umbriel {
               : type == "Scalable" ? Directory::Type::Scalable
                                    : Directory::Type::Threshold,
           .size = size * scale,
-          .minSize = number(keys, "MinSize", size) * scale,
-          .maxSize = number(keys, "MaxSize", size) * scale,
-          .threshold = number(keys, "Threshold", 2) * scale,
+          .minSize = bounded("MinSize", size),
+          .maxSize = bounded("MaxSize", size),
+          .threshold = bounded("Threshold", 2),
+          .applications = context.empty() || context == "Applications",
       });
     }
     m_themes.push_back(std::move(theme));
@@ -414,8 +433,8 @@ namespace umbriel {
   }
 
   std::optional<std::string> AppIconLookup::entryIcon(std::string_view appId, pid_t pid) {
-    // An entry named after the app id is the common case, and needs no scan of every entry. The first file with that
-    // name decides; a hidden or non-application one is left to the scan, which lets it shadow later directories.
+    // The entry named after the app id needs no scan. A hidden or non-application one is left to the scan, where it
+    // shadows later directories.
     for (const std::string& id : {std::string(appId), lowercase(appId)}) {
       const auto dir = std::ranges::find_if(m_paths.applications, [&id](const std::filesystem::path& candidate) {
         return isFile(candidate / (id + ".desktop"));
@@ -487,33 +506,42 @@ namespace umbriel {
   }
 
   std::filesystem::path AppIconLookup::findInTheme(const Theme& theme, std::string_view name, int size) const {
-    std::filesystem::path best;
-    int bestDistance = std::numeric_limits<int>::max();
-    int bestSize = 0;
-    for (const Directory& directory : theme.directories) {
-      int distance = 0;
-      switch (directory.type) {
-      case Directory::Type::Fixed:
-        distance = std::abs(size - directory.size);
-        break;
-      case Directory::Type::Scalable:
-        distance = size < directory.minSize ? directory.minSize - size : std::max(0, size - directory.maxSize);
-        break;
-      case Directory::Type::Threshold:
-        distance = std::abs(size - directory.size) <= directory.threshold ? 0 : std::abs(size - directory.size);
-        break;
+    // Application directories first; other contexts only for a name none of them holds.
+    for (const bool applications : {true, false}) {
+      std::filesystem::path best;
+      int bestDistance = std::numeric_limits<int>::max();
+      int bestSize = 0;
+      for (const Directory& directory : theme.directories) {
+        if (directory.applications != applications) {
+          continue;
+        }
+        int distance = 0;
+        switch (directory.type) {
+        case Directory::Type::Fixed:
+          distance = std::abs(size - directory.size);
+          break;
+        case Directory::Type::Scalable:
+          distance = size < directory.minSize ? directory.minSize - size : std::max(0, size - directory.maxSize);
+          break;
+        case Directory::Type::Threshold:
+          distance = std::abs(size - directory.size) <= directory.threshold ? 0 : std::abs(size - directory.size);
+          break;
+        }
+        // Equal distances prefer the larger image: downscaling keeps detail that upscaling cannot invent.
+        if (distance > bestDistance || (distance == bestDistance && directory.size <= bestSize)) {
+          continue;
+        }
+        if (std::filesystem::path path = fileIn(theme.roots, directory.path, name); !path.empty()) {
+          best = std::move(path);
+          bestDistance = distance;
+          bestSize = directory.size;
+        }
       }
-      // Equal distances prefer the larger image: downscaling keeps detail that upscaling cannot invent.
-      if (distance > bestDistance || (distance == bestDistance && directory.size <= bestSize)) {
-        continue;
-      }
-      if (std::filesystem::path path = fileIn(theme.roots, directory.path, name); !path.empty()) {
-        best = std::move(path);
-        bestDistance = distance;
-        bestSize = directory.size;
+      if (!best.empty()) {
+        return best;
       }
     }
-    return best;
+    return {};
   }
 
   std::filesystem::path AppIconLookup::find(std::string_view appId, pid_t pid, int size) {

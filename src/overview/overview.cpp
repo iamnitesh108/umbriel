@@ -163,7 +163,7 @@ namespace umbriel {
     m_server->unregisterAnimatable(this);
     m_zoomAnim.snap(0.0);
     teardown();
-    dropIcons([](const std::string& /*key*/) { return true; });
+    dropIcons([](const DecodedIcon& /*icon*/) { return true; }, true);
   }
 
   double Overview::settledZoom() { return std::clamp(config().overview.zoom, 0.1, 0.75); }
@@ -316,8 +316,7 @@ namespace umbriel {
     syncCardEffects(card);
 
     if (card.shortcutBadge.tree != nullptr || card.iconBadge.tree != nullptr) {
-      // Badges place against the card as it shows, chrome included: a tab bar above the content raises the card's
-      // top edge to the bar's.
+      // Badges measure from the card as drawn, tab bar included.
       int left = 0;
       int top = 0;
       int right = contentW;
@@ -1371,8 +1370,8 @@ namespace umbriel {
     if (badge.tree == nullptr) {
       return;
     }
-    // A card too small for the badge shrinks it into the room inside its margins. A shrunken badge shows only while it
-    // stays legible and covers no more than a quarter of the card, so a tiny card keeps its window in view.
+    // A badge too big for its card shrinks into the margins, but shows only while it stays legible and covers at most a
+    // quarter of the card.
     const int roomW = area.width - 2 * kBadgeMargin;
     const int roomH = area.height - 2 * kBadgeMargin;
     const double scale =
@@ -1429,86 +1428,105 @@ namespace umbriel {
       m_iconSettings = std::move(settings);
       m_iconPaths.clear();
       m_iconLookup.reset();
-      dropIcons([](const std::string& /*key*/) { return true; });
+      dropIcons([](const DecodedIcon& /*icon*/) { return true; }, true);
+    }
+    if (!m_iconStampChecked) {
+      m_iconStampChecked = true;
+      if (auto stamp = desktopEntryStamp(appIconSearchPaths()); stamp != m_iconStamp) {
+        m_iconStamp = std::move(stamp);
+        std::erase_if(m_iconPaths, [](const auto& entry) { return entry.second.empty(); });
+      }
     }
     const char* appIdText = card.view->appId();
     const std::string_view appId = appIdText != nullptr ? appIdText : "";
     const std::string custom = card.view->overviewIcon();
-    // Keys lead with the app id, which the app's last window closing drops them by.
     std::string key = std::format("{}@{}#{}", appId, size, custom);
     if (const auto decoded = m_iconBuffers.find(key); decoded != m_iconBuffers.end()) {
       decoded->second.used = true;
       return decoded->second.buffer;
     }
 
-    // A rule's icon wins over the application's own, which wins over the fallback. A found path is kept for the
-    // session; a window with none is searched again on the next open, so an icon installed after it appeared still
-    // shows up, and the fallback stands in only until then. A file that fails to decode is kept as an empty path.
-    std::filesystem::path path;
-    bool fallback = false;
-    if (const auto known = m_iconPaths.find(key); known != m_iconPaths.end()) {
-      path = known->second;
-    } else {
+    // A rule's icon wins over the application's own.
+    auto path = m_iconPaths.find(key);
+    if (path == m_iconPaths.end()) {
       if (m_iconLookup == nullptr) {
         m_iconLookup = std::make_unique<AppIconLookup>(appIconSearchPaths(), overview.iconTheme);
       }
+      std::filesystem::path found;
       if (!custom.empty()) {
-        path = m_iconLookup->findIcon(custom, size);
-        if (path.empty()) {
+        found = m_iconLookup->findIcon(custom, size);
+        if (found.empty()) {
           kLog.warn("overview icon {} for {} not found; using the application's own", custom, appId);
         }
       }
-      if (path.empty() && !appId.empty()) {
-        path = m_iconLookup->find(appId, card.view->pid(), size);
+      if (found.empty() && !appId.empty()) {
+        found = m_iconLookup->find(appId, card.view->pid(), size);
       }
-      if (!path.empty()) {
-        m_iconPaths.emplace(key, path);
-      } else if (!overview.fallbackIcon.empty()) {
-        path = m_iconLookup->findIcon(overview.fallbackIcon, size);
-        fallback = true;
-      }
+      path = m_iconPaths.emplace(key, std::move(found)).first;
     }
+    wlr_buffer* buffer = path->second.empty() ? nullptr : loadIconBuffer(path->second, size);
+    if (buffer == nullptr) {
+      if (!path->second.empty()) {
+        kLog.warn("could not decode icon {}", path->second.string());
+        path->second.clear();
+      }
+      return fallbackIcon(size);
+    }
+    m_iconBuffers.emplace(std::move(key), DecodedIcon{.buffer = buffer, .used = true, .appId = std::string(appId)});
+    return buffer;
+  }
+
+  wlr_buffer* Overview::fallbackIcon(int size) {
+    const std::string& fallback = config().overview.fallbackIcon;
+    if (fallback.empty()) {
+      return nullptr;
+    }
+    if (const auto decoded = m_fallbackIcons.find(size); decoded != m_fallbackIcons.end()) {
+      return decoded->second;
+    }
+    if (m_iconLookup == nullptr) {
+      m_iconLookup = std::make_unique<AppIconLookup>(appIconSearchPaths(), config().overview.iconTheme);
+    }
+    const std::filesystem::path path = m_iconLookup->findIcon(fallback, size);
     wlr_buffer* buffer = path.empty() ? nullptr : loadIconBuffer(path, size);
-    if (!path.empty() && buffer == nullptr) {
-      kLog.warn("could not decode icon {}", path.string());
-      if (!fallback) {
-        m_iconPaths[key].clear();
-      }
+    if (buffer == nullptr) {
+      kLog.warn("fallback_icon {} not found or not decodable", fallback);
     }
-    m_iconBuffers.emplace(std::move(key), DecodedIcon{.buffer = buffer, .used = true, .fallback = fallback});
+    m_fallbackIcons.emplace(size, buffer);
     return buffer;
   }
 
   void Overview::releaseIcons() {
     m_iconLookup.reset();
+    m_iconStampChecked = false;
     if (!config().overview.appIcons) {
       m_iconPaths.clear();
+      dropIcons([](const DecodedIcon& /*icon*/) { return true; }, true);
+      return;
     }
-    // An icon this open drew is likely drawn by the next; one it did not, from an old size or scale, is not. A window
-    // without an icon of its own, fallback or none, is searched again next time.
-    std::erase_if(m_iconBuffers, [](auto& entry) {
-      DecodedIcon& icon = entry.second;
-      if (icon.used && icon.buffer != nullptr && !icon.fallback) {
-        icon.used = false;
-        return false;
-      }
-      if (icon.buffer != nullptr) {
-        wlr_buffer_drop(icon.buffer);
-      }
-      return true;
-    });
+    // Keep what this open drew; drop the rest, such as icons at an old size or scale.
+    dropIcons([](const DecodedIcon& icon) { return !icon.used; }, false);
+    for (auto& [key, icon] : m_iconBuffers) {
+      icon.used = false;
+    }
   }
 
-  void Overview::dropIcons(const std::function<bool(const std::string& key)>& drop) {
+  void Overview::dropIcons(const std::function<bool(const DecodedIcon& icon)>& drop, bool fallbacks) {
     std::erase_if(m_iconBuffers, [&drop](const auto& entry) {
-      if (!drop(entry.first)) {
+      if (!drop(entry.second)) {
         return false;
       }
-      if (entry.second.buffer != nullptr) {
-        wlr_buffer_drop(entry.second.buffer);
-      }
+      wlr_buffer_drop(entry.second.buffer);
       return true;
     });
+    if (fallbacks) {
+      for (const auto& [size, buffer] : m_fallbackIcons) {
+        if (buffer != nullptr) {
+          wlr_buffer_drop(buffer);
+        }
+      }
+      m_fallbackIcons.clear();
+    }
   }
 
   void Overview::assignShortcuts() {
@@ -2225,8 +2243,7 @@ namespace umbriel {
             return other.get() != view && other->mapped() && appIdOf(*other) == id;
           });
       if (lastWindow) {
-        const std::string prefix = std::format("{}@", id);
-        dropIcons([&prefix](const std::string& key) { return key.starts_with(prefix); });
+        dropIcons([id](const DecodedIcon& icon) { return icon.appId == id; }, false);
       }
     }
     if (!m_active) {

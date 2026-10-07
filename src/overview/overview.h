@@ -172,9 +172,15 @@ namespace umbriel {
       wl_listener outputSample{};
       wl_listener frameDone{};
     };
+    // A decoded icon, whether the current open drew it, and the app it belongs to.
+    // A decoded icon, shared by every card with its key: whether the current open drew it, and the app it belongs to.
+    struct DecodedIcon {
+      wlr_buffer* buffer = nullptr;
+      bool used = false;
+      std::string appId;
+    };
 
-    // A label or icon over a card, centered on an optional fill. Sizes are the full-size ones; a card too small for
-    // them shrinks the badge to fit.
+    // A label or icon over a card on an optional fill, at full size; layout shrinks it on a small card.
     struct Badge {
       wlr_scene_tree* tree = nullptr;
       wlr_scene_rect* fill = nullptr;
@@ -350,28 +356,28 @@ namespace umbriel {
     [[nodiscard]] View* liveTargetView() const;
     [[nodiscard]] std::array<float, 4> cardBorderColor(const Card& card, const View* liveTarget) const;
     void assignShortcuts();
-    // Device-pixel scale badge buffers render at on the card's output: its scale, rounded up, and at least 1.
+    // Scale badge buffers render at: the card output's scale rounded up, at least 1.
     [[nodiscard]] static double badgeBufferScale(const Card& card);
     // Rebuild the card's shortcut label badge or application icon badge from its current state.
     void renderShortcutBadge(Card& card);
     void renderIconBadge(Card& card);
-    // Replace `badge` with a `width` x `height` one centering `content` at `contentWidth` x `contentHeight`; null
-    // `content` leaves it empty.
+    // Replace `badge` with a `width` x `height` badge around `content`, or with none when `content` is null.
     static void buildBadge(
         Card& card, Badge& badge, wlr_buffer* content, int contentWidth, int contentHeight, int width, int height
     );
-    // Place `badge` at `position` within `area`, the card's visible box relative to its origin, shrinking it when the
-    // area is too small for it.
+    // Place `badge` at `position` within `area`, the card's visible box, shrinking it to fit.
     void layoutBadge(
         Card& card, Badge& badge, const std::array<double, 2>& position, const wlr_box& area,
         const PreviewMetrics& metrics, float alpha, int radius
     ) const;
-    // The decoded icon of the card's app at `size` pixels, or null when it has none.
+    // The decoded icon for the card at `size` pixels, the fallback when it has none of its own, or null.
     [[nodiscard]] wlr_buffer* cardIcon(const Card& card, int size);
     // At close: keep the icons this open drew and drop the rest, everything when app_icons is off.
     void releaseIcons();
-    // Drop decoded icons whose key matches `drop`.
-    void dropIcons(const std::function<bool(const std::string& key)>& drop);
+    // Drop the decoded icons `drop` picks, and the fallbacks when `fallbacks` is set.
+    void dropIcons(const std::function<bool(const DecodedIcon& icon)>& drop, bool fallbacks);
+    // The fallback icon at `size` pixels, or null when none is set or found.
+    [[nodiscard]] wlr_buffer* fallbackIcon(int size);
     bool handleShortcutKey(uint32_t keysym);
     void refreshShortcutMatches();
     void clearShortcutInput();
@@ -427,23 +433,20 @@ namespace umbriel {
     std::string m_shortcutInput;
     std::vector<ShortcutAssignment> m_shortcutAssignments;
     size_t m_shortcutLabelCapacity = 0;
-    // Icon files by app id, pixel size, and window rule icon, kept across opens so each is searched once. An empty
-    // path records an icon that failed to decode.
+    // Icon files by app id, pixel size, and rule icon. Empty for a window without a decodable one, retried once a
+    // desktop entry directory changes.
     std::unordered_map<std::string, std::filesystem::path> m_iconPaths;
+    std::vector<std::filesystem::file_time_type> m_iconStamp;
+    // Whether this open compared `m_iconStamp` with the directories yet.
+    bool m_iconStampChecked = false;
     // The icon theme and fallback icon the cached icons were resolved with.
     std::string m_iconSettings;
     // Theme indexes, parsed while the overview is open and released when it closes.
     std::unique_ptr<AppIconLookup> m_iconLookup;
-    // A decoded icon, shared by every card with its key, whether the current open drew it, and whether it is the
-    // fallback standing in for an icon not found.
-    struct DecodedIcon {
-      wlr_buffer* buffer = nullptr;
-      bool used = false;
-      bool fallback = false;
-    };
-    // Decoded icons, keyed like `m_iconPaths`. Those an open drew stay for the next one until their app's last window
-    // closes; the rest, and fallbacks, go when the overview closes.
+    // Decoded icons by key, kept across opens while drawn and until their app's last window closes.
     std::unordered_map<std::string, DecodedIcon> m_iconBuffers;
+    // The fallback icon decoded per pixel size, null where it cannot be found, until the settings change.
+    std::unordered_map<int, wlr_buffer*> m_fallbackIcons;
     // Output under the pointer, which is the output the live target resolves against.
     Output* m_pointerOutput = nullptr;
 
