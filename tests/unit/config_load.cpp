@@ -1230,11 +1230,24 @@ UMBRIEL_TEST(overviewBadgeConfigurationLoads) {
   ConfigStore& store = umbriel::configStore();
   store.setRootPath(file.path(), true);
 
-  file.write("[overview]\nicon_size = 48\nbadge_position = [0.6, 1]\n");
+  CHECK(!store.config().colors.overview.badgeBackground);
+  CHECK_EQ(store.config().overview.badgeBackgroundOpacity, 1.0);
+
+  file.write(
+      "[overview]\nicon_size = 48\nbadge_position = [0.6, 1]\nbadge_background_opacity = 0\n\n"
+      "[colors.overview]\nbadge_background = \"#FF000080\"\n"
+  );
   CHECK(store.reload().success);
   CHECK_EQ(store.config().overview.iconSize, 48);
   CHECK_EQ(store.config().overview.badgePosition[0], 0.6);
   CHECK_EQ(store.config().overview.badgePosition[1], 1.0);
+  CHECK_EQ(store.config().overview.badgeBackgroundOpacity, 0.0);
+  CHECK(store.config().colors.overview.badgeBackground.has_value());
+  CHECK_EQ((*store.config().colors.overview.badgeBackground)[0], 1.0F);
+
+  file.write("[overview]\nbadge_background_opacity = 1.5\n");
+  CHECK(store.reload().success);
+  CHECK_EQ(store.config().overview.badgeBackgroundOpacity, 1.0);
 }
 
 UMBRIEL_TEST(overviewBadgePositionRejectsInvalidValues) {

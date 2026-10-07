@@ -345,13 +345,15 @@ namespace umbriel {
         if (card.badgeIcon != nullptr) {
           wlr_scene_buffer_set_opacity(card.badgeIcon, badgeAlpha);
         }
-        const std::array<float, 4> background = tint(card.badgeBackground, badgeAlpha);
-        wlr_scene_rect_set_color(card.badgeRect, background.data());
-        // The badge renders unscaled, so it takes the zoomed radius the cards
-        // around it use instead of the full-size one.
-        wlr_scene_rect_set_corner_radius(
-            card.badgeRect, std::min(scaledRadius, std::min(card.badgeWidth, card.badgeHeight) / 2)
-        );
+        if (card.badgeRect != nullptr) {
+          const std::array<float, 4> background = tint(card.badgeBackground, badgeAlpha);
+          wlr_scene_rect_set_color(card.badgeRect, background.data());
+          // The badge renders unscaled, so it takes the zoomed radius the cards
+          // around it use instead of the full-size one.
+          wlr_scene_rect_set_corner_radius(
+              card.badgeRect, std::min(scaledRadius, std::min(card.badgeWidth, card.badgeHeight) / 2)
+          );
+        }
       }
     }
 
@@ -1317,7 +1319,9 @@ namespace umbriel {
 
     const auto& colors = config().colors;
     const std::array<float, 4>& badgeColor = colors.overview.badge;
-    card.badgeBackground = keycapBackgroundColor(colors.background, badgeColor);
+    card.badgeBackground =
+        colors.overview.badgeBackground.value_or(keycapBackgroundColor(colors.background, badgeColor));
+    card.badgeBackground[3] *= static_cast<float>(config().overview.badgeBackgroundOpacity);
     TextBufferResult rendered{};
     if (labeled) {
       const size_t matched = std::min(card.shortcutMatched, card.shortcut.size());
@@ -1356,8 +1360,12 @@ namespace umbriel {
     const int labelX = icon != nullptr ? iconInset + iconSize + kBadgeIconInset : kBadgeSidePad;
     const int badgeWidth =
         labeled ? std::max(labelX + rendered.logicalWidth + kBadgeSidePad, badgeHeight) : badgeHeight;
-    const std::array<float, 4> background = tint(card.badgeBackground, 1.0);
-    card.badgeRect = wlr_scene_rect_create(card.badge, badgeWidth, badgeHeight, background.data());
+    // A fully transparent fill gets no node, so it costs nothing to draw.
+    const bool filled = card.badgeBackground[3] > 0.0F;
+    if (filled) {
+      const std::array<float, 4> background = tint(card.badgeBackground, 1.0);
+      card.badgeRect = wlr_scene_rect_create(card.badge, badgeWidth, badgeHeight, background.data());
+    }
     if (labeled) {
       card.badgeText = wlr_scene_buffer_create(card.badge, rendered.buffer);
       wlr_buffer_drop(rendered.buffer);
@@ -1365,7 +1373,7 @@ namespace umbriel {
     if (icon != nullptr) {
       card.badgeIcon = wlr_scene_buffer_create(card.badge, icon);
     }
-    if (card.badgeRect == nullptr
+    if ((filled && card.badgeRect == nullptr)
         || (labeled && card.badgeText == nullptr)
         || (icon != nullptr && card.badgeIcon == nullptr)) {
       wlr_scene_node_destroy(&card.badge->node);

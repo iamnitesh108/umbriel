@@ -18,6 +18,7 @@ app_icons = false
 icon_theme = "hicolor"
 icon_size = 24
 badge_position = [0.0, 0.0]
+badge_background_opacity = 1.0
 ```
 
 | Key | Default | Description |
@@ -33,6 +34,7 @@ badge_position = [0.0, 0.0]
 | `icon_theme` | `"hicolor"` | Icon theme for application icons; icons it lacks come from `hicolor`. |
 | `icon_size` | `24` | Application icon size in logical pixels, from 12 to 128. |
 | `badge_position` | `[0.0, 0.0]` | Badge placement on its card as `[x, y]` fractions from 0 to 1. |
+| `badge_background_opacity` | `1.0` | Opacity of the fill behind badges, from 0 (no fill) to 1. |
 
 Background blur uses `[appearance.blur]`. Preview backgrounds use
 `colors.overview.workspace_background` when wallpaper mirroring is disabled or
@@ -117,6 +119,10 @@ bottom-right, `[0.5, 0.5]` the center, and any value between works, such as
 far enough to stay visible when its card runs past the output edge or under a
 panel. A badge larger than its card is hidden, so a large
 `icon_size` can hide badges on small cards.
+
+The fill behind a badge uses `colors.overview.badge_background`, its alpha
+scaled by `badge_background_opacity`. At `0` no fill is drawn and the label or
+icon sits directly on the window preview.
 
 ### Move windows
 

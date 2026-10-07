@@ -36,6 +36,7 @@ namespace umbriel {
           color("background_tint", &C::Overview::backgroundTint),
           color("workspace_background", &C::Overview::workspaceBackground),
           color("badge", &C::Overview::badge),
+          color("badge_background", &C::Overview::badgeBackground),
       };
       static const registry::Fields<C::TabBar> tabBar{
           color("background", &C::TabBar::background),
@@ -221,6 +222,7 @@ namespace umbriel {
               },
               [](const O& defaults) { return nlohmann::ordered_json(defaults.badgePosition); }
           ),
+          real("badge_background_opacity", 0.0, 1.0, &O::badgeBackgroundOpacity),
       };
       return fields;
     }

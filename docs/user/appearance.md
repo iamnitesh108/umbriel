@@ -53,6 +53,7 @@ them for the windows it matches.
 background_tint = "#10101430"
 workspace_background = "#00000044"
 badge = "#7AA3FFFF"
+# badge_background = "#1E1E2EFF"
 ```
 
 | Key | Description |
@@ -60,6 +61,7 @@ badge = "#7AA3FFFF"
 | `background_tint` | Tint over the desktop behind the overview. |
 | `workspace_background` | Background behind each workspace preview. |
 | `badge` | Shortcut badge color. |
+| `badge_background` | Fill behind badges. Unset by default, which mixes a little of `badge` into `colors.background`. |
 
 See [Workspaces Overview](workspaces-overview.md#settings-and-behavior) for
 overview behavior.

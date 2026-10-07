@@ -2,7 +2,8 @@
 # harness: xdg-data=true
 # Overview badges take their icon size from `icon_size` and sit at `badge_position` as fractions of the room inside the
 # card: [0, 0] hugs the top-left margin, [1, 1] the bottom-right one, [0.5, 0.5] centers. A badge whose position falls
-# past the output edge slides back inside it.
+# past the output edge slides back inside it. The fill behind it takes `colors.overview.badge_background` scaled by
+# `badge_background_opacity`, and disappears at 0.
 set -euo pipefail
 
 readonly CLIENT="${UMBRIEL_UNMAP_CLIENT:-./build-debug/tests/unmap-client}"
@@ -44,10 +45,11 @@ focus_title() {
     > /dev/null
 }
 
-# Reloads with `zoom` and `badge_position`, then opens the overview and captures it.
+# Reloads with `zoom`, `badge_position`, and optional extra config appended after [overview], then opens the overview
+# and captures it.
 capture() {
-  printf '%s\n\n[appearance]\nborder_width = 0\nouter_border_width = 0\ncorner_radius = 0\n\n[layout.scrolling]\ndefault_extent_fraction = 0.5\n\n[overview]\nzoom = %s\nshortcuts = false\napp_icons = true\nicon_size = %d\nbadge_position = %s\n' \
-    "$BASELINE" "$1" "$ICON" "$2" > "$UMBRIEL_CONFIG"
+  printf '%s\n\n[appearance]\nborder_width = 0\nouter_border_width = 0\ncorner_radius = 0\n\n[layout.scrolling]\ndefault_extent_fraction = 0.5\n\n[overview]\nzoom = %s\nshortcuts = false\napp_icons = true\nicon_size = %d\nbadge_position = %s\n%s\n' \
+    "$BASELINE" "$1" "$ICON" "$2" "${3:-}" > "$UMBRIEL_CONFIG"
   "$UMBRIEL" msg config-reload > /dev/null
   "$UMBRIEL" clock-advance 2000
   "$UMBRIEL" msg overview-open > /dev/null
@@ -83,6 +85,22 @@ expect "top-left icon x" "$ICON_X" $((CARD_X + EDGE))
 expect "top-left icon y" "$ICON_Y" $((CARD_Y + EDGE))
 "$UMBRIEL" msg overview-close > /dev/null
 
+# The badge fill is the ring between the icon and the badge edge, inset 4 pixels on each side.
+readonly RING=$(((ICON + 8) * (ICON + 8) - ICON * ICON))
+ring_count() {
+  "$UMBRIEL_PIXEL_PROBE" "$IMAGE" count "$1" "$((ICON + 8))x$((ICON + 8))+$((ICON_X - 4))+$((ICON_Y - 4))"
+}
+capture 0.5 '[0, 0]' $'\n[colors.overview]\nbadge_background = "#FF00FFFF"'
+expect "opaque fill" "$(ring_count 'r > 0.9 && g < 0.1 && b > 0.9')" "$RING"
+"$UMBRIEL" msg overview-close > /dev/null
+capture 0.5 '[0, 0]' $'badge_background_opacity = 0.5\n\n[colors.overview]\nbadge_background = "#FF00FFFF"'
+expect "half-opaque fill over the red card" "$(ring_count 'r > 0.9 && g < 0.1 && b > 0.4 && b < 0.6')" "$RING"
+"$UMBRIEL" msg overview-close > /dev/null
+capture 0.5 '[0, 0]' 'badge_background_opacity = 0'
+expect "transparent fill" "$(ring_count "!($RED) && !($GREEN)")" 0
+expect "icon width without fill" "$ICON_W" "$ICON"
+"$UMBRIEL" msg overview-close > /dev/null
+
 capture 0.5 '[1, 1]'
 expect "bottom-right icon right edge" $((ICON_X + ICON_W)) $((CARD_X + CARD_W - EDGE))
 expect "bottom-right icon bottom edge" $((ICON_Y + ICON_H)) $((CARD_Y + CARD_H - EDGE))
@@ -105,4 +123,4 @@ expect "clipped icon width" "$ICON_W" "$ICON"
 expect "clipped icon right edge" $((ICON_X + ICON_W)) $((OUTPUT_W - EDGE))
 expect "clipped icon y" "$ICON_Y" $((CARD_Y + EDGE))
 
-echo "badges follow icon_size and badge_position, and stay on screen when the card does not"
+echo "badges follow icon_size, badge_position, and the background color and opacity, and stay on screen"

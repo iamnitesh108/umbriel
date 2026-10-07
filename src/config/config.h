@@ -621,6 +621,8 @@ namespace umbriel {
         // Rounded background behind each workspace; alpha controls opacity.
         std::array<float, 4> workspaceBackground{0.0F, 0.0F, 0.0F, 0.2666667F};
         std::array<float, 4> badge{0.4784314F, 0.6392157F, 1.0F, 1.0F};
+        // Fill behind each badge; unset mixes a little of `badge` into `background`.
+        std::optional<std::array<float, 4>> badgeBackground;
         bool operator==(const Overview&) const = default;
       } overview;
 
@@ -870,6 +872,8 @@ namespace umbriel {
       // Badge placement as fractions of the room a card leaves around it: {0, 0} is the top-left corner, {1, 1} the
       // bottom-right, {0.5, 0.5} the center.
       std::array<double, 2> badgePosition{0.0, 0.0};
+      // Scales the alpha of colors.overview.badge_background; 0 draws no fill behind the label or icon.
+      double badgeBackgroundOpacity = 1.0;
       bool operator==(const Overview&) const = default;
     } overview;
 
