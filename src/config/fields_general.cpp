@@ -101,6 +101,7 @@ namespace umbriel {
           registry::text("font", &A::TabBar::font),
           integer("padding", 0, 64, &A::TabBar::padding),
           integer("tab_gap", 0, 64, &A::TabBar::tabGap),
+          integer("window_gap", -1, 500, &A::TabBar::windowGap),
           integer("corner_radius", -1, 100, &A::TabBar::cornerRadius),
           registry::text("title_format", &A::TabBar::titleFormat),
           registry::choice(
