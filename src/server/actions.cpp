@@ -848,7 +848,7 @@ namespace umbriel {
         return true;
       }
       if (Workspace* workspace = windowActionWorkspace(server)) {
-        if (View* target = workspace->focusAdjacent(Direction)) {
+        if (View* target = workspace->focusAdjacent(Direction, true)) {
           focusWindowFromNavigation(server, target);
         }
       }
@@ -936,7 +936,7 @@ namespace umbriel {
 
     template <int Direction> bool actionFocusVertical(Server& server, const Keybind& /*bind*/, std::string* /*error*/) {
       if (Workspace* workspace = windowActionWorkspace(server)) {
-        if (View* target = workspace->focusVertical(Direction)) {
+        if (View* target = workspace->focusVertical(Direction, true)) {
           focusWindowFromNavigation(server, target);
         }
       }
@@ -973,7 +973,7 @@ namespace umbriel {
 
     template <int Direction> bool actionMoveColumn(Server& server, const Keybind& /*bind*/, std::string* /*error*/) {
       if (Workspace* workspace = windowActionWorkspace(server)) {
-        invalidateHoverFocusAfterSceneChange(server, workspace->moveFocusedColumn(Direction));
+        invalidateHoverFocusAfterSceneChange(server, workspace->moveFocusedColumn(Direction, true));
       }
       return true;
     }
@@ -1051,7 +1051,7 @@ namespace umbriel {
 
     template <int Direction> bool actionMoveVertical(Server& server, const Keybind& /*bind*/, std::string* /*error*/) {
       if (Workspace* workspace = windowActionWorkspace(server)) {
-        workspace->moveFocusedVertical(Direction);
+        workspace->moveFocusedVertical(Direction, true);
       }
       return true;
     }

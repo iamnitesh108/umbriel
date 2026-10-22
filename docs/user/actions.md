@@ -329,6 +329,8 @@ See [Layout](layout.md) for geometry, directions, and resizing behavior.
 
 - Output direction actions do not wrap. The `next` and `previous` variants do.
 - Workspace `next`, `previous`, `move-up`, and `move-down` do not wrap.
+- With `layout.scrolling.wrap_around`, focus and column moves along a scrolling
+  strip wrap at its ends; the `-or-output` and `-or-workspace` variants do not.
 - A whole-column move preserves order, proportions, and column extent.
   Between scrolling workspaces, it also preserves tab groups, their selected
   tabs, and individual tab-bar visibility overrides.

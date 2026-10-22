@@ -108,6 +108,9 @@ namespace umbriel {
       if (overrides.scrolling.centerUnderfullStrip) {
         resolved.scrolling.centerUnderfullStrip = *overrides.scrolling.centerUnderfullStrip;
       }
+      if (overrides.scrolling.wrapAround) {
+        resolved.scrolling.wrapAround = *overrides.scrolling.wrapAround;
+      }
       if (overrides.scrolling.centerFocused) {
         resolved.scrolling.centerFocused = *overrides.scrolling.centerFocused;
       }
@@ -462,6 +465,7 @@ namespace umbriel {
     resolved.scrolling.defaultExtentFraction = config.layout.scrolling.defaultExtentFraction;
     resolved.scrolling.centerUnderfullStrip = config.layout.scrolling.centerUnderfullStrip;
     resolved.scrolling.centerFocused = config.layout.scrolling.centerFocused;
+    resolved.scrolling.wrapAround = config.layout.scrolling.wrapAround;
     resolved.dwindle.preserveSplit = config.layout.dwindle.preserveSplit;
     resolved.dwindle.newTowardCursor = config.layout.dwindle.newTowardCursor;
     resolved.master.defaultWidthFraction = config.layout.master.defaultWidthFraction;

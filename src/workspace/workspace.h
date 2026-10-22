@@ -172,20 +172,20 @@ namespace umbriel {
     void syncViewPresentation(View* view);
     // Directional queries and moves read the layout's arranged targets, so they
     // apply a pending arrange first.
-    [[nodiscard]] View* focusAdjacent(int direction);
-    [[nodiscard]] View* focusVertical(int direction);
+    [[nodiscard]] View* focusAdjacent(int direction, bool wrap = false);
+    [[nodiscard]] View* focusVertical(int direction, bool wrap = false);
     [[nodiscard]] View* focusFirstColumn() const;
     [[nodiscard]] View* focusLastColumn() const;
     [[nodiscard]] View* focusReplacementForRemoval(const View* view) const;
     [[nodiscard]] View* cycleFocusTarget(int direction) const;
-    bool moveFocusedColumn(int direction);
+    bool moveFocusedColumn(int direction, bool wrap = false);
     bool moveFocusedColumnFirst();
     bool moveFocusedColumnLast();
     bool consumeFocused(int direction);
     // Pulls the window the neighboring column shows into the focused window's column, leaving focus alone.
     bool consumeFromFocused(int direction);
     bool expelFocused(int direction);
-    bool moveFocusedVertical(int direction);
+    bool moveFocusedVertical(int direction, bool wrap = false);
     // Moves the focused window, not its column, one step left or right: into the neighboring dwindle tile, along a
     // vertical strip's lane, or out of its column and into the next one.
     bool moveFocusedHorizontal(int direction);
@@ -278,13 +278,14 @@ namespace umbriel {
     [[nodiscard]] std::optional<std::array<int, 2>> focusedFloatingAxis(bool width) const;
     // The focused floating window's size as a fraction of the usable axis; nullopt when unavailable.
     [[nodiscard]] std::optional<double> focusedFloatingFraction(bool width) const;
-    [[nodiscard]] View* focusAlongStrip(int direction);
+    // `wrap` lets layout.scrolling.wrap_around carry a step past either end of the strip to the other end.
+    [[nodiscard]] View* focusAlongStrip(int direction, bool wrap = false);
     [[nodiscard]] View* focusWithinLane(int direction);
     // Directional focus lands on the most recently focused window of the group
     // the move entered (target column, or crossed dwindle subtree). Moves that
     // stay inside one group keep `target`.
     [[nodiscard]] View* preferRecentPeer(View* target) const;
-    bool moveLaneAlongStrip(int direction);
+    bool moveLaneAlongStrip(int direction, bool wrap = false);
     bool moveWithinLane(int direction);
     // Take `view` out of the layout while holding visible lanes still.
     void detachFromLayout(View* view);

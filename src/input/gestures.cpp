@@ -594,6 +594,7 @@ namespace umbriel {
   void Gestures::finishScroll(bool cancelled, uint32_t timeMsec) {
     Workspace* workspace = m_scrollWorkspace;
     Output* output = m_output;
+    const bool swipe = m_scrollSource == ScrollSource::Swipe;
     m_state = State::Idle;
     m_scrollSource = ScrollSource::None;
     m_scrollWorkspace = nullptr;
@@ -624,6 +625,23 @@ namespace umbriel {
     const double projected = m_scrollStart - m_scrollTracker.projectedEndPos() * m_scrollScale;
 
     const auto columnCount = static_cast<int>(scrolling->columns().size());
+
+    // With wrap_around, a flick past the end the strip rests at, from the column at that end, lands on the other end.
+    if (swipe && workspace->layoutConfig().scrolling.wrapAround && columnCount > 1) {
+      const int wrap = GesturePhysics::stripWrap(
+          m_scrollStart, projected, std::ranges::min(scrolling->snapScrolls(0, m_viewportPrimary)),
+          std::ranges::max(scrolling->snapScrolls(columnCount - 1, m_viewportPrimary)), m_viewportPrimary
+      );
+      const int focusedColumn = scrolling->columnOf(workspace->focusedView());
+      if ((wrap > 0 && focusedColumn == columnCount - 1) || (wrap < 0 && focusedColumn == 0)) {
+        scrolling->setScroll(m_scrollStart);
+        const Column& end = scrolling->columns()[wrap > 0 ? 0 : static_cast<size_t>(columnCount - 1)];
+        m_server->focusView(columnEntry(end), FocusReason::Gesture);
+        workspace->ensureFocusedVisible();
+        workspace->markArrange(true);
+        return;
+      }
+    }
 
     // Snapping points are each column's resting offsets (ScrollingLayout::snapScrolls). Release settles on the point
     // closest to the projected position, so a flick commits whatever column it would decelerate past, not merely the

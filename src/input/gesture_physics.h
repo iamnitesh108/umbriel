@@ -45,6 +45,18 @@ namespace umbriel {
       return static_cast<int>(std::lround(clamped));
     }
 
+    // Which way a strip release wraps under layout.scrolling.wrap_around: 1 when a swipe that began resting at the last
+    // scroll would coast half a viewport past it, -1 for the same past the first, and 0 otherwise.
+    [[nodiscard]] static int stripWrap(double start, double projected, double first, double last, double viewport) {
+      if (start >= last - 1.0 && projected >= last + viewport / 2.0) {
+        return 1;
+      }
+      if (start <= first + 1.0 && projected <= first - viewport / 2.0) {
+        return -1;
+      }
+      return 0;
+    }
+
     // Reduce the effect of the overview zoom on touchpad travel, rather than multiplying sensitivity by the full
     // inverse zoom.
     [[nodiscard]] static double zoomScale(double zoom) { return 1.0 / (1.0 + (zoom - 1.0) / 2.5); }

@@ -173,6 +173,7 @@ namespace umbriel {
       static const Fields<Scrolling> scrolling{
           real("default_extent_fraction", 0.1, 1.0, &Scrolling::defaultExtentFraction),
           boolean("center_underfull_strip", &Scrolling::centerUnderfullStrip),
+          boolean("wrap_around", &Scrolling::wrapAround),
           choice("center_focused", &Scrolling::centerFocused, centerFocusedModes()),
       };
       static const Fields<Dwindle> dwindle{

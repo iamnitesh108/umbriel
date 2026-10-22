@@ -96,6 +96,7 @@ namespace umbriel {
     struct Scrolling {
       std::optional<double> defaultExtentFraction;
       std::optional<bool> centerUnderfullStrip;
+      std::optional<bool> wrapAround;
       std::optional<CenterFocusedColumn> centerFocused;
       bool operator==(const Scrolling&) const = default;
     } scrolling;
@@ -152,6 +153,7 @@ namespace umbriel {
     struct Scrolling {
       std::optional<double> defaultExtentFraction;
       bool centerUnderfullStrip = true;
+      bool wrapAround = false;
       CenterFocusedColumn centerFocused = CenterFocusedColumn::Never;
       // Axis-agnostic layout state is preserved when config reload changes direction.
       ScrollingDirection direction = ScrollingDirection::Horizontal;
@@ -923,6 +925,7 @@ namespace umbriel {
       struct Scrolling {
         std::optional<double> defaultExtentFraction;
         bool centerUnderfullStrip = true;
+        bool wrapAround = false;
         CenterFocusedColumn centerFocused = CenterFocusedColumn::Never;
         bool operator==(const Scrolling&) const = default;
       } scrolling;

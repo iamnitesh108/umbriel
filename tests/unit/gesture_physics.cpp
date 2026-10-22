@@ -130,4 +130,14 @@ UMBRIEL_TEST(theOverviewSettlesOnTheSideTheProjectionPointsTo) {
   CHECK_EQ(pastEnd.target, 1);
 }
 
+UMBRIEL_TEST(aStripWrapsOnlyOnAFlickPastTheEndItRestsAt) {
+  // A strip resting between 0 and 800 under a 1000-wide viewport.
+  CHECK_EQ(GesturePhysics::stripWrap(800.0, 1400.0, 0.0, 800.0, 1000.0), 1);
+  CHECK_EQ(GesturePhysics::stripWrap(0.0, -600.0, 0.0, 800.0, 1000.0), -1);
+  // A small overscroll bounces back, a flick from the middle only reaches the end, and a swipe away stays put.
+  CHECK_EQ(GesturePhysics::stripWrap(800.0, 1200.0, 0.0, 800.0, 1000.0), 0);
+  CHECK_EQ(GesturePhysics::stripWrap(400.0, 1400.0, 0.0, 800.0, 1000.0), 0);
+  CHECK_EQ(GesturePhysics::stripWrap(0.0, 300.0, 0.0, 800.0, 1000.0), 0);
+}
+
 int main() { return RUN_TESTS(); }

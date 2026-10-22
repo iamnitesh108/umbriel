@@ -188,6 +188,7 @@ rule can override only `layout.struts.top`.
 | `layout.client_maximize` | Choose `"column"` or `"edges"` for a tiled window's own maximize request; see [Maximize and fullscreen](layout.md#maximize-and-fullscreen). |
 | `layout.scrolling.default_extent_fraction` | Set the initial scrolling-column extent. |
 | `layout.scrolling.center_underfull_strip` | Center or start-align an underfull strip. |
+| `layout.scrolling.wrap_around` | Wrap focus and column moves at the ends of the strip. |
 | `layout.scrolling.center_focused` | Control when focus changes center a column. |
 | `layout.master.position` | Place the master area left, right, or center. |
 | `layout.master.default_width_fraction` | Set the master-area fraction. |

@@ -1412,14 +1412,18 @@ namespace umbriel {
     return outputBox;
   }
 
-  View* Workspace::focusAlongStrip(int direction) {
+  View* Workspace::focusAlongStrip(int direction, bool wrap) {
     flushArrange();
     if (const auto horizontal = m_layout->focusHorizontalLeaf(m_focusedView, direction)) {
       return *horizontal;
     }
     const int current = m_layout->columnOf(m_focusedView);
-    const int target = current + direction;
-    if (current < 0 || target < 0 || target >= static_cast<int>(m_layout->columns().size())) {
+    const int count = static_cast<int>(m_layout->columns().size());
+    int target = current + direction;
+    if (wrap && current >= 0 && count > 1 && scrollingLayout() != nullptr && m_layoutConfig.scrolling.wrapAround) {
+      target = (target + count) % count;
+    }
+    if (current < 0 || target < 0 || target >= count) {
       return nullptr;
     }
     return columnEntry(m_layout->columns()[static_cast<size_t>(target)]);
@@ -1466,12 +1470,12 @@ namespace umbriel {
     return target;
   }
 
-  View* Workspace::focusAdjacent(int direction) {
-    return preferRecentPeer(scrollingVertical() ? focusWithinLane(direction) : focusAlongStrip(direction));
+  View* Workspace::focusAdjacent(int direction, bool wrap) {
+    return preferRecentPeer(scrollingVertical() ? focusWithinLane(direction) : focusAlongStrip(direction, wrap));
   }
 
-  View* Workspace::focusVertical(int direction) {
-    return preferRecentPeer(scrollingVertical() ? focusAlongStrip(direction) : focusWithinLane(direction));
+  View* Workspace::focusVertical(int direction, bool wrap) {
+    return preferRecentPeer(scrollingVertical() ? focusAlongStrip(direction, wrap) : focusWithinLane(direction));
   }
 
   View* Workspace::focusFirstColumn() const {
@@ -1661,8 +1665,8 @@ namespace umbriel {
     return true;
   }
 
-  bool Workspace::moveLaneAlongStrip(int direction) {
-    View* destination = focusAlongStrip(direction);
+  bool Workspace::moveLaneAlongStrip(int direction, bool wrap) {
+    View* destination = focusAlongStrip(direction, wrap);
     if (destination == nullptr) {
       return false;
     }
@@ -1714,12 +1718,12 @@ namespace umbriel {
     return true;
   }
 
-  bool Workspace::moveFocusedColumn(int direction) {
+  bool Workspace::moveFocusedColumn(int direction, bool wrap) {
     // Dwindle has no columns to carry, so a column move is the window move.
     if (dwindleLayout() != nullptr) {
       return (m_focusedView == nullptr || !m_focusedView->floating()) && moveFocusedHorizontal(direction);
     }
-    return scrollingVertical() ? moveWithinLane(direction) : moveLaneAlongStrip(direction);
+    return scrollingVertical() ? moveWithinLane(direction) : moveLaneAlongStrip(direction, wrap);
   }
 
   bool Workspace::moveFocusedHorizontal(int direction) {
@@ -1739,11 +1743,11 @@ namespace umbriel {
     return expelFocused(direction) || consumeFocused(direction);
   }
 
-  bool Workspace::moveFocusedVertical(int direction) {
+  bool Workspace::moveFocusedVertical(int direction, bool wrap) {
     if (m_focusedView != nullptr && m_focusedView->floating()) {
       return m_focusedView->moveFloatingToEdge(direction < 0 ? WLR_EDGE_TOP : WLR_EDGE_BOTTOM);
     }
-    return scrollingVertical() ? moveLaneAlongStrip(direction) : moveWithinLane(direction);
+    return scrollingVertical() ? moveLaneAlongStrip(direction, wrap) : moveWithinLane(direction);
   }
 
   bool Workspace::moveFocusedColumnFirst() {

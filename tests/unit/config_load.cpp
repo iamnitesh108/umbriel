@@ -276,6 +276,7 @@ extent_presets = [0.05, 0.5, 2.0]
 
 [layout.scrolling]
 center_underfull_strip = false
+wrap_around = true
 always_center_single_column = true
 [layout.dwindle]
 preserve_split = true
@@ -293,6 +294,7 @@ extent_presets = [0.25, 0.75]
 
 [workspace.layout.scrolling]
 center_underfull_strip = true
+wrap_around = false
 [workspace.layout.dwindle]
 preserve_split = false
 )");
@@ -308,6 +310,7 @@ preserve_split = false
   CHECK_EQ(store.config().layout.extentPresets[1], 0.5);
   CHECK_EQ(store.config().layout.extentPresets[2], 1.0);
   CHECK(!store.config().layout.scrolling.centerUnderfullStrip);
+  CHECK(store.config().layout.scrolling.wrapAround);
   CHECK(store.config().layout.dwindle.preserveSplit);
   CHECK(store.config().appearance.preferNoCsd);
   CHECK_EQ(store.config().outputs.size(), size_t{1});
@@ -318,6 +321,7 @@ preserve_split = false
   CHECK(store.config().workspaceRules[0].layout.extentPresets.has_value());
   CHECK_EQ(store.config().workspaceRules[0].layout.extentPresets->size(), size_t{2});
   CHECK(store.config().workspaceRules[0].layout.scrolling.centerUnderfullStrip == true);
+  CHECK(store.config().workspaceRules[0].layout.scrolling.wrapAround == false);
   CHECK(store.config().workspaceRules[0].layout.dwindle.preserveSplit == false);
   CHECK(containsDiagnostic(store, "unknown key unknown_root_key"));
   CHECK(containsDiagnostic(store, "output.DP-1.scale = 9"));
