@@ -1087,7 +1087,21 @@ namespace umbriel {
     return true;
   }
 
-  bool ScratchpadManager::showStep(std::string_view name, int direction, Output* invokingOutput) {
+  bool ScratchpadManager::showCycle(std::string_view name, Output* invokingOutput) {
+    const Scratchpad* scratchpad = findScratchpad(name);
+    if (scratchpad != nullptr && scratchpad->visible && scratchpad->output == invokingOutput) {
+      if (hasFocus(name)) {
+        return toggle(name, invokingOutput);
+      }
+      if (View* view = focused(name)) {
+        m_server->focusView(view);
+        return true;
+      }
+    }
+    return showStep(name, 1, invokingOutput, true);
+  }
+
+  bool ScratchpadManager::showStep(std::string_view name, int direction, Output* invokingOutput, bool cycle) {
     Scratchpad* scratchpad = findScratchpad(name);
     if (scratchpad == nullptr
         || invokingOutput == nullptr
@@ -1123,7 +1137,11 @@ namespace umbriel {
       const std::ptrdiff_t index = current == members.end() ? 0 : current - members.begin();
       target = members[static_cast<size_t>((index + direction + count) % count)];
     } else {
-      const auto remembered = findMember(scratchpad->lastFocused);
+      // Cycling moves on from the window focused last.
+      auto remembered = findMember(scratchpad->lastFocused);
+      if (cycle && remembered != members.end() && ++remembered == members.end()) {
+        remembered = members.begin();
+      }
       target = remembered != members.end() ? *remembered : members.front();
     }
     scratchpad->solo = target;

@@ -357,6 +357,8 @@ namespace umbriel {
          KeybindAction::ScratchpadFocusNext, ActionArgKind::OptionalScratchpad},
         {"scratchpad-toggle", "[<scratchpad>]", "Show or hide the selected scratchpad windows",
          KeybindAction::ScratchpadToggle, ActionArgKind::OptionalScratchpad},
+        {"scratchpad-window-cycle", "[<scratchpad>]", "Show the next scratchpad window, or hide the one on show",
+         KeybindAction::ScratchpadWindowCycle, ActionArgKind::OptionalScratchpad},
         {"scratchpad-window-show-next", "[<scratchpad>]", "Show only the next scratchpad window",
          KeybindAction::ScratchpadWindowShowNext, ActionArgKind::OptionalScratchpad},
         {"scratchpad-window-show-previous", "[<scratchpad>]", "Show only the previous scratchpad window",

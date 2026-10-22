@@ -69,7 +69,9 @@ namespace umbriel {
     bool focusNext(std::string_view name);
     // Show one window of the scratchpad at a time: the one after (`direction` > 0) or before the window on show,
     // wrapping at the ends. A hidden pad shows its most recently focused window.
-    bool showStep(std::string_view name, int direction, Output* invokingOutput);
+    bool showStep(std::string_view name, int direction, Output* invokingOutput, bool cycle = false);
+    // Hide the window on show if it has focus, focus it if not, otherwise show the next one.
+    bool showCycle(std::string_view name, Output* invokingOutput);
     [[nodiscard]] View* focused(std::string_view name) const;
     [[nodiscard]] bool hasFocus(std::string_view name) const;
     // The most recently focused window when that focus went to a scratchpad

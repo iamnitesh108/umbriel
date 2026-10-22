@@ -1987,7 +1987,13 @@ namespace umbriel {
         return false;
       }
       ScratchpadManager* scratchpad = server.scratchpadManager();
-      return scratchpad != nullptr && scratchpad->showStep(*name, Direction, output);
+      if (scratchpad == nullptr) {
+        return false;
+      }
+      if constexpr (Direction == 0) {
+        return scratchpad->showCycle(*name, output);
+      }
+      return scratchpad->showStep(*name, Direction, output);
     }
 
     bool actionRestoreFromScratchpad(Server& server, const Keybind& bind, std::string* error) {
@@ -2290,6 +2296,7 @@ namespace umbriel {
         &actionScratchpadWindowShowStep<-1>,
         &actionLayoutToggleSplit,
         &actionOutputSdrWhite,
+        &actionScratchpadWindowShowStep<0>,
     };
 
     consteval bool everyActionHasHandler() {

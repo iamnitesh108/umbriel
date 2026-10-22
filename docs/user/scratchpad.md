@@ -57,6 +57,9 @@ time instead, bind `scratchpad-window-show-next` and
 Both styles work on the same scratchpad, so each binding can pick the one it
 wants.
 
+`scratchpad-window-cycle` does both on one key: it hides the focused window on
+show, or shows the next one.
+
 ## Named scratchpads
 
 Define names when you want several independent scratchpads:
@@ -166,6 +169,7 @@ The implicit `default` scratchpad has no definition and therefore no
 | `scratchpad-focus-next:[<scratchpad>]` | Focus the next visible member. |
 | `scratchpad-window-show-next:[<scratchpad>]` | Show only the next member, hiding the one on show. |
 | `scratchpad-window-show-previous:[<scratchpad>]` | Show only the previous member, hiding the one on show. |
+| `scratchpad-window-cycle:[<scratchpad>]` | Hide the focused member on show, or show the next one. |
 
 The argument is optional only for the implicit `default` scratchpad. Restore
 and focus-next require the scratchpad to be visible.

@@ -222,6 +222,7 @@ multi-output behavior.
 |--------|--------|
 | `scratchpad-focus-next:[<scratchpad>]` | Focus the next visible scratchpad window |
 | `scratchpad-toggle:[<scratchpad>]` | Show or hide the selected scratchpad windows |
+| `scratchpad-window-cycle:[<scratchpad>]` | Show the next scratchpad window, or hide the one on show |
 | `scratchpad-window-show-next:[<scratchpad>]` | Show only the next scratchpad window |
 | `scratchpad-window-show-previous:[<scratchpad>]` | Show only the previous scratchpad window |
 | `window-move-to-scratchpad:[<scratchpad>]` | Move the focused window into a scratchpad |

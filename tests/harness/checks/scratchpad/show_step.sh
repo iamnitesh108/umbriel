@@ -97,6 +97,27 @@ expect scratchpad-window-show-next blue
 expect scratchpad-window-show-next red
 expect scratchpad-window-show-previous blue
 
+# scratchpad-window-cycle hides the focused window on show, then shows the next one.
+expect scratchpad-window-cycle ""
+expect scratchpad-window-cycle red
+expect scratchpad-window-cycle ""
+expect scratchpad-window-cycle green
+
+# With focus elsewhere, it focuses the window on show instead.
+spawn plain 0xFF5577AA
+plain_pid=$!
+"$UMBRIEL" msg "window-focus:$(window_of plain | jq -r .id)" > /dev/null
+expect scratchpad-window-cycle green
+if [[ $(window_of pad-green | jq -r .active) != true ]]; then
+  echo "scratchpad-window-cycle did not return focus to the window on show: $("$UMBRIEL" windows --json)"
+  exit 1
+fi
+kill "$plain_pid"
+for _ in $(seq 80); do
+  [[ -z "$(window_of plain)" ]] && break
+  sleep 0.025
+done
+
 # scratchpad-toggle hides a pad showing one window, and shows every window again. They open centred on each other, so
 # two are dragged aside to show all three at once; dragging a scratchpad window keeps it in the scratchpad.
 expect scratchpad-toggle ""
