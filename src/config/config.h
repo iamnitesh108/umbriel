@@ -177,7 +177,7 @@ namespace umbriel {
       bool middleClickCloses = false;
       // Derived from [appearance.tab_bar]; set by resolve function. The bar's space is part of the layout.
       int barHeight = 24;
-      // window_gap, or gap when that is -1.
+      // [appearance.tab_bar] gap, or the layout gap when that is -1.
       int barGap = 8;
       TabBarPosition barPosition = TabBarPosition::Top;
       bool hideWhenSingle = false;
@@ -706,7 +706,7 @@ namespace umbriel {
         // Space between neighbouring slots.
         int tabGap = 2;
         // Space between the bar and its window; -1 follows the layout gap.
-        int windowGap = -1;
+        int gap = -1;
         // -1 follows corner_radius.
         int cornerRadius = -1;
         // {title}, {app_id} and {index} are replaced; a window without a title shows its app id instead.

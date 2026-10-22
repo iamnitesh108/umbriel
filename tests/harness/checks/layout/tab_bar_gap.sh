@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# window_gap sets the space between a tab bar and its window on every edge, and -1 keeps the layout gap.
+# The tab bar's gap sets the space between it and its window on every edge, and -1 keeps the layout gap.
 set -euo pipefail
 
 readonly CLIENT="${UMBRIEL_UNMAP_CLIENT:-./build-debug/tests/unmap-client}"
@@ -20,7 +20,7 @@ outer_border_width = 0
 [appearance.tab_bar]
 style = "indicator"
 position = "top"
-window_gap = -1
+gap = -1
 
 [colors.tab_bar]
 active = "#FF0000FF"
@@ -46,7 +46,7 @@ read -r _ _ _ _ cx cy cw ch <<< "$(boxes)"
 "$UMBRIEL" msg column-show-tab-bar > /dev/null
 
 expect() {
-  sed -i "s/^position = .*/position = \"$1\"/; s/^window_gap = .*/window_gap = $2/" "$UMBRIEL_CONFIG"
+  sed -i "s/^position = .*/position = \"$1\"/; /^\[appearance\.tab_bar\]/,/^\[/ s/^gap = .*/gap = $2/" "$UMBRIEL_CONFIG"
   "$UMBRIEL" msg config-reload > /dev/null
   local bx by bw bh x y w h ok
   read -r bx by bw bh x y w h <<< "$(boxes)"
@@ -58,7 +58,7 @@ expect() {
     right) ok=$((x == cx && bx + bw == cx + cw && bx - x - w == $3 && bh == h)) ;;
   esac
   if ((!ok)); then
-    echo "$1 bar, window_gap $2: expected a $3 gap in $cx,$cy ${cw}x$ch, got bar $bx,$by ${bw}x$bh, tab $x,$y ${w}x$h"
+    echo "$1 bar, gap $2: expected a $3 gap in $cx,$cy ${cw}x$ch, got bar $bx,$by ${bw}x$bh, tab $x,$y ${w}x$h"
     exit 1
   fi
 }
@@ -68,4 +68,4 @@ for position in top bottom left right; do
 done
 expect top -1 24
 
-echo "window_gap spaced the tab bar from its window on every edge, and -1 kept the layout gap"
+echo "the tab bar's gap spaced it from its window on every edge, and -1 kept the layout gap"

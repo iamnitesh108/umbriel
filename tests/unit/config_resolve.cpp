@@ -62,7 +62,7 @@ UMBRIEL_TEST(tabBarGapFollowsTheWorkspaceGapUnlessSet) {
   config.workspaceRules.push_back(std::move(wide));
   CHECK_EQ(umbriel::resolveWorkspaceLayout(config, identity("DP-1"), "wide", 0).tabs.barGap, 30);
 
-  config.appearance.tabBar.windowGap = 0;
+  config.appearance.tabBar.gap = 0;
   CHECK_EQ(umbriel::resolveWorkspaceLayout(config, identity("DP-1"), "wide", 0).tabs.barGap, 0);
 }
 
