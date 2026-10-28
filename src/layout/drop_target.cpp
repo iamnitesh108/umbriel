@@ -589,4 +589,40 @@ namespace umbriel {
     server.focusView(&view, FocusReason::DragDrop);
   }
 
+  void rebuildTabGroup(View& view, Workspace& workspace, std::span<View* const> tabs, std::optional<bool> bar) {
+    Layout& layout = workspace.layout();
+    const int column = layout.columnOf(&view);
+    // A window that landed on its own becomes a group of one, which the other tabs then join.
+    if (ScrollingLayout* scrolling = workspace.scrollingLayout(); scrolling != nullptr && column >= 0) {
+      const Column& landed = scrolling->columns()[static_cast<size_t>(column)];
+      if (tabGroupOf(landed, &view) == nullptr) {
+        ColumnTabs groups = landed.tabs;
+        const auto row = static_cast<size_t>(scrolling->rowOf(&view));
+        groups.form(row, 1, row, bar);
+        scrolling->adoptTabs(column, groups);
+      }
+    }
+    TabbedContainers* containers = layout.tabbedContainers();
+    const auto self = std::ranges::find(tabs, &view);
+    const bool grouped = containers != nullptr
+        && self != tabs.end()
+        && column >= 0
+        && tabGroupOf(layout.columns()[static_cast<size_t>(column)], &view) != nullptr;
+    for (auto tab = tabs.begin(); tab != tabs.end(); ++tab) {
+      if (*tab == &view) {
+        continue;
+      }
+      if ((*tab)->workspace() != &workspace) {
+        (*tab)->moveToWorkspace(&workspace, /*attachToLayout=*/false);
+      }
+      // Earlier tabs go in just before `view` and later ones after it, so the group keeps its order.
+      const int row = layout.rowOf(&view) + static_cast<int>(tab < self ? 0 : tab - self);
+      if (!grouped || !containers->insertTab(*tab, column, row, &view)) {
+        (*tab)->setTabHidden(false);
+        workspace.layoutAttach(*tab);
+      }
+    }
+    workspace.markArrange(true);
+  }
+
 } // namespace umbriel
