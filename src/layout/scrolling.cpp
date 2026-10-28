@@ -1199,6 +1199,9 @@ namespace umbriel {
           crossSize = std::max(1, crossSize);
         }
         if (const TabGroup* group = column.tabs.groupAt(start)) {
+          // A group holds its tabs' minimum plus a bar that stacks with them, as a window holds its own minimum.
+          const int bar = tabBarAcross(m_config->tabs.barPosition) != v ? tabBarReserve(group->count, group->bar) : 0;
+          crossSize = std::max(crossSize, bar + unitMinCross(column, start, *this, v));
           const wlr_box unit = v ? wlr_box{.x = cross, .y = primary, .width = crossSize, .height = primarySize}
                                  : wlr_box{.x = primary, .y = cross, .width = primarySize, .height = crossSize};
           pushTabTargets(column, *group, unit);
