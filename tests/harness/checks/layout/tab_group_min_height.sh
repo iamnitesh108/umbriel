@@ -37,7 +37,7 @@ wait_for_windows 3
 tab_y=$("$UMBRIEL" windows --json | jq -r '.[] | select(.title == "tab-b") | .y')
 
 for _ in $(seq 10); do
-  "$UMBRIEL" msg window-modify-secondary-extent:0.1 > /dev/null
+  "$UMBRIEL" msg window-modify-secondary-extent 0.1 > /dev/null
 done
 "$UMBRIEL" settle
 
