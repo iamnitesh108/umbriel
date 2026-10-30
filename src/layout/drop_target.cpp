@@ -625,4 +625,30 @@ namespace umbriel {
     workspace.markArrange(true);
   }
 
+  void returnTabGroup(View& shown, std::span<View* const> tabs, std::optional<bool> bar, const TabGroupHome& home) {
+    Workspace& workspace = *shown.workspace();
+    Layout& layout = workspace.layout();
+    shown.setTabHidden(false);
+    if (home.row >= 0) {
+      layout.insertViewIntoColumn(&shown, home.column, home.row);
+    }
+    if (const int column = layout.columnOf(&shown); column >= 0) {
+      if (ScrollingLayout* scrolling = workspace.scrollingLayout()) {
+        scrolling->setHeightWeight(column, scrolling->rowOf(&shown), home.weight);
+      }
+    } else {
+      // A group that filled its column, or whose column has gone since, comes back as a column of its own.
+      layout.insertView(&shown, home.column);
+      if (home.width) {
+        const int inserted = layout.columnOf(&shown);
+        layout.setWidthFraction(inserted, home.width->fraction);
+        if (home.width->fullWidth) {
+          layout.toggleFullWidth(inserted);
+        }
+        shown.setMaximizedState(home.width->fullWidth);
+      }
+    }
+    rebuildTabGroup(shown, workspace, tabs, bar);
+  }
+
 } // namespace umbriel

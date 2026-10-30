@@ -35,8 +35,8 @@ spawn_client tab-c
 wait_for_windows 3
 "$UMBRIEL" msg window-consume-left > /dev/null
 "$UMBRIEL" msg column-toggle-tabbed > /dev/null
-"$UMBRIEL" msg column-focus-tab:2 > /dev/null
-"$UMBRIEL" msg window-set-primary-extent:0.4 > /dev/null
+"$UMBRIEL" msg column-focus-tab 2 > /dev/null
+"$UMBRIEL" msg window-set-primary-extent 0.4 > /dev/null
 spawn_client other
 wait_for_windows 4
 "$UMBRIEL" msg column-focus-first > /dev/null

@@ -81,6 +81,7 @@ namespace umbriel {
       bool carryTabGroup = false;
       std::vector<View*> tabs;
       std::optional<bool> tabBar;
+      TabGroupHome tabHome;
     };
     struct FloatingResizeGrab {
       View* view = nullptr;
